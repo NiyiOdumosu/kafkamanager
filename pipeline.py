@@ -19,10 +19,10 @@ def get_latest_commit_diff():
         latest_commit = repo.get_commits()[0]
         feature_topic_content = repo.get_contents("application1/topics/topics.json", ref="test")
         main_topic_content = repo.get_contents("application1/topics/topics.json", ref="main")
-        old_topics = json.loads(feature_topic_content.decoded_content)
-        new_topics = json.loads(main_topic_content.decoded_content)
+        old_topics = json.loads(main_topic_content.decoded_content)
+        new_topics = json.loads(feature_topic_content.decoded_content)
 
-        return  new_topics, old_topics
+        return   old_topics, new_topics
     except Exception as e:
         logger.error(f"Error getting latest commit diff: {e}")
         raise
