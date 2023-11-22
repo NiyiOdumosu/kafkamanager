@@ -1,94 +1,102 @@
 [
     {
-        "topic_name": "topic_a",
-        "partitions_count": "4",
-        "replication_factor": 3,
-        "configs": [
-            {
-                "name": "cleanup.policy",
-                "value": "delete"
-            },
-            {
-                "name": "compression.type",
-                "value": "zstd"
-            },
-            {
-                "name": "retention.ms",
-                "value": 604800000
-            },
-            {
-                "name": "segment.bytes",
-                "value": 1073741824
-            }
-        ]
+        "topic_a": {
+            "topic_name": "topic_a",
+            "partitions_count": "4",
+            "replication_factor": 3,
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "delete"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "zstd"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 604800000
+                },
+                {
+                    "name": "segment.bytes",
+                    "value": 1073741824
+                }
+            ]
+        }
     },
     {
-        "topic_name": "topic_b",
-        "partitions_count": "3",
-        "replication_factor": 3,
-        "configs": [
-            {
-                "name": "cleanup.policy",
-                "value": "delete"
-            },
-            {
-                "name": "compression.type",
-                "value": "gzip"
-            },
-            {
-                "name": "retention.ms",
-                "value": 604800000
-            },
-            {
-                "name": "segment.bytes",
-                "value": 1073741824
-            }
-        ]
+        "topic_b": {
+            "topic_name": "topic_b",
+            "partitions_count": "3",
+            "replication_factor": 3,
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "delete"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "gzip"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 604800000
+                },
+                {
+                    "name": "segment.bytes",
+                    "value": 1073741824
+                }
+            ]
+        }
     },
     {
-        "topic_name": "topic_c",
-        "partitions_count": "4",
-        "replication_factor": 3,
-        "configs": [
-            {
-                "name": "cleanup.policy",
-                "value": "delete"
-            },
-            {
-                "name": "compression.type",
-                "value": "gzip"
-            },
-            {
-                "name": "retention.ms",
-                "value": 604800000
-            },
-            {
-                "name": "segment.bytes",
-                "value": 1073741824
-            }
-        ]
+        "topic_c": {
+            "topic_name": "topic_c",
+            "partitions_count": "4",
+            "replication_factor": 3,
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "delete"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "gzip"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 604800000
+                },
+                {
+                    "name": "segment.bytes",
+                    "value": 1073741824
+                }
+            ]
+        }
     },
     {
-        "topic_name": "topic_e",
-        "partitions_count": "7",
-        "replication_factor": 3,
-        "configs": [
-            {
-                "name": "cleanup.policy",
-                "value": "delete"
-            },
-            {
-                "name": "compression.type",
-                "value": "lz4"
-            },
-            {
-                "name": "retention.ms",
-                "value": 604800000
-            },
-            {
-                "name": "segment.bytes",
-                "value": 1073741824
-            }
-        ]
+        "topic_e": {
+            "topic_name": "topic_e",
+            "partitions_count": "7",
+            "replication_factor": 3,
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "delete"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "lz4"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 604800000
+                },
+                {
+                    "name": "segment.bytes",
+                    "value": 1073741824
+                }
+            ]
+        }
     }
 ]
