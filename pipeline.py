@@ -22,7 +22,7 @@ def get_latest_commit_diff():
         old_topics = json.loads(feature_topic_content.decoded_content)
         new_topics = json.loads(main_topic_content.decoded_content)
 
-        return old_topics, new_topics
+        return  new_topics, old_topics
     except Exception as e:
         logger.error(f"Error getting latest commit diff: {e}")
         raise
@@ -53,7 +53,7 @@ def find_changed_topics(old_topics, new_topics):
                 changed_topic_names.append({topic_name: diff, "type": "update"})
         else:
             # Topic was removed
-            changed_topic_names.append({topic_name: diff, "type": "removed"})
+            changed_topic_names.append({topic_name: old_topics_dict.get(topic_name), "type": "removed"})
 
     # Check for new additions
     for topic_name in new_topics_dict:
