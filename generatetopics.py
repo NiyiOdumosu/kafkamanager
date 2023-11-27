@@ -13,7 +13,7 @@ for index, row in df.iterrows():
         f"{topic_name}" : {
             "topic_name": row['topic name'],
             "partitions_count": str(row['partition count']),
-            "replication_factor": 3,
+            "replication_factor": str(row['replication factor']),
             "configs": [
                 {
                     "name": "cleanup.policy",
