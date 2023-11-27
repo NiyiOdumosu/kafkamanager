@@ -98,30 +98,5 @@
                 }
             ]
         }
-    },
-    {
-        "topic_f": {
-            "topic_name": "topic_f",
-            "partitions_count": "3",
-            "replication_factor": "1",
-            "configs": [
-                {
-                    "name": "cleanup.policy",
-                    "value": "delete"
-                },
-                {
-                    "name": "compression.type",
-                    "value": "lz4"
-                },
-                {
-                    "name": "retention.ms",
-                    "value": 604800000
-                },
-                {
-                    "name": "segment.bytes",
-                    "value": 1073741824
-                }
-            ]
-        }
     }
 ]
