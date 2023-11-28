@@ -158,16 +158,14 @@ def update_existing_topic(topic_name, topic_config):
 
     current_topic_definition = response.json()
     print(f"existing topic definition :{current_topic_definition}")
-    partition_response = update_replication_factor(current_topic_definition, rest_topic_url, topic_config, topic_name)
-    partition_response = update_partition_count(current_topic_definition, partition_response, rest_topic_url,
-                                                topic_config, topic_name)
     # Check if the requested update is a config change
-    updateConfigs = "{\"data\":" + json.dumps(topic_config['configs']) + "}"
-    logger.info("altering configs to " + updateConfigs)
-    response = requests.post(f"{rest_topic_url}{topic_name}" + "/configs:alter", data=updateConfigs, headers=HEADERS)
-    logger.info("this is the code " + str(response.status_code) + " this is the reason: " + response.reason)
-    if partition_response.reason != 200:
-        exit(1)
+    if not topic_config["values_changed"]["root[\'replication_factor\']"] and topic_config["values_changed"]["root[\'partitions_count\']"]:
+        updateConfigs = "{\"data\":" + json.dumps(topic_config['configs']) + "}"
+        logger.info("altering configs to " + updateConfigs)
+        response = requests.post(f"{rest_topic_url}{topic_name}" + "/configs:alter", data=updateConfigs, headers=HEADERS)
+        logger.info("this is the code " + str(response.status_code) + " this is the reason: " + response.reason)
+    update_replication_factor(current_topic_definition, rest_topic_url, topic_config, topic_name)
+    update_partition_count(current_topic_definition, rest_topic_url, topic_config, topic_name)
 
 
 def update_replication_factor(current_topic_definition, rest_topic_url, topic_config, topic_name):
@@ -188,47 +186,46 @@ def update_replication_factor(current_topic_definition, rest_topic_url, topic_co
     """
     current_replication_factor = current_topic_definition['replication_factor']
     # Check if the requested update is the replication factor
-    if topic_config["values_changed"]["root[\'replication_factor\']"]:
-        new_replication_factor = int(topic_config["values_changed"]["root[\'replication_factor\']"]["new_value"])
-        if new_replication_factor != current_replication_factor:
-            logger.info(f"A requested change for replication factor for topic  {topic_name} is from "
-                        f"{str(current_replication_factor)} to {str(new_replication_factor)}")
-            partition_response = requests.patch(f"{rest_topic_url}{topic_name}",
-                                                data="{\"replication_factor\":" + new_replication_factor + "}")
-            if partition_response.status_code != 200:
-                logger.info(
-                    f"The replication factor change failed for topic {topic_name} due to {str(partition_response.status_code)} -  {partition_response.reason}")
-                exit(1)
-            logger.info(f"The replication factor change for topic {topic_name} was successful")
-    return partition_response
+    try:
+        if topic_config["values_changed"]["root[\'replication_factor\']"]:
+            new_replication_factor = int(topic_config["values_changed"]["root[\'replication_factor\']"]["new_value"])
+            if new_replication_factor != current_replication_factor:
+                logger.info(f"A requested change for replication factor for topic  {topic_name} is from "
+                            f"{str(current_replication_factor)} to {str(new_replication_factor)}")
+                partition_response = requests.patch(f"{rest_topic_url}{topic_name}",
+                                                    data="{\"replication_factor\":" + new_replication_factor + "}")
+                if partition_response.status_code != 200:
+                    logger.info(
+                        f"The replication factor change failed for topic {topic_name} due to {str(partition_response.status_code)} -  {partition_response.reason}")
+                    exit(1)
+                logger.info(f"The replication factor change for topic {topic_name} was successful")
+    except KeyError:
+        logger.info("Replication Factor was not requested to be updated ")
 
 
-def update_partition_count(current_topic_definition, partition_response, rest_topic_url, topic_config, topic_name):
+def update_partition_count(current_topic_definition, rest_topic_url, topic_config, topic_name):
     """
     Update the partition count for a Kafka topic based on the provided configuration.
 
     Parameters:
     - current_topic_definition (dict): Dictionary representing the current configuration of the Kafka topic.
-    - partition_response (requests.Response): The response from the previous REST API call to update replication factor.
     - rest_topic_url (str): The REST API URL for the Kafka topic.
     - topic_config (dict): Dictionary containing the configuration changes for the Kafka topic.
     - topic_name (str): The name of the Kafka topic.
-
-    Returns:
-    requests.Response: The response from the REST API call to update the partition count.
 
     Raises:
     SystemExit: If the partition count update fails, the program exits with status code 1.
     """
     current_partitions_count = current_topic_definition['partitions_count']
+
     # Check if the requested update is the partition count
-    if topic_config["values_changed"]["root[\'replication_factor\']"]:
+    try:
         new_partition_count = int(topic_config["values_changed"]["root[\'partitions_count\']"]["new_value"])
         if new_partition_count > current_partitions_count:
             logger.info(f"A requested increase of partitions for topic  {topic_name} is from "
                         f"{str(current_partitions_count)} to {str(new_partition_count)}")
             partition_response = requests.patch(f"{rest_topic_url}{topic_name}",
-                                                data="{\"partitions_count\":" + new_partition_count + "}")
+                                                data="{\"partitions_count\":" + str(new_partition_count) + "}")
             if partition_response.status_code != 200:
                 logger.info(
                     f"The partition increase failed for topic {topic_name} due to {str(partition_response.status_code)} -  {partition_response.reason}")
@@ -237,7 +234,8 @@ def update_partition_count(current_topic_definition, partition_response, rest_to
         elif new_partition_count < current_partitions_count:
             logger.error("Cannot reduce partition count for a given topic")
             exit(1)
-    return partition_response
+    except Exception as e:
+        logger.error("Failed due to " + e)
 
 
 def delete_topic(topic):
