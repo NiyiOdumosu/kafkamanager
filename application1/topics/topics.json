@@ -102,7 +102,7 @@
        {
         "topic_f": {
             "topic_name": "topic_f",
-            "partitions_count": "1",
+            "partitions_count": "3",
             "replication_factor": "1",
             "configs": [
                 {
