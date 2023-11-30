@@ -107,15 +107,15 @@
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "delete"
+                    "value": "compact"
                 },
                 {
                     "name": "compression.type",
-                    "value": "lz4"
+                    "value": "gzip"
                 },
                 {
                     "name": "retention.ms",
-                    "value": 604800000
+                    "value": 504800010
                 },
                 {
                     "name": "segment.bytes",
