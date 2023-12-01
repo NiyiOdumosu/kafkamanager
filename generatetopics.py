@@ -9,30 +9,40 @@ topics_list = []
 
 for index, row in df.iterrows():
     topic_name = row['topic name']
+
+    # Set defaults for topic configs
+    cleanup_policy = 'delete' if str(row['cleanup.policy']) == "nan" else str(row['cleanup.policy'])
+    partitions_count = '4' if str(row['partition count']) == "nan" else str(row['partition count'])
+    replication_factor = '3' if str(row['replication factor']) == "nan" else str(row['replication factor'])
+    compression_type = 'producer' if str(row['compression.type']) == "nan" else str(row['compression.type'])
+    retention_ms = 86400000 if str(row['retention.ms']) == "nan" else row['retention.ms']
+    max_message_bytes = 1048588 if str(row['max.message.bytes']) == "nan" else row['max.message.bytes']
+
+
     topic_dict = {
         f"{topic_name}" : {
-            "topic_name": row['topic name'],
-            "partitions_count": str(row['partition count']),
-            "replication_factor": str(row['replication factor']),
-            "configs": [
-                {
-                    "name": "cleanup.policy",
-                    "value": str(row['cleanup.policy'])
-                },
-                {
-                    "name": "compression.type",
-                    "value": str(row['compression.type'])
-                },
-                {
-                    "name": "retention.ms",
-                    "value": int(row['retention.ms'])
-                },
-                {
-                    "name": "segment.bytes",
-                    "value": int(row['segment.bytes'])
-                }
-            ]
-        }
+        "topic_name": row['topic name'],
+        "partitions_count": partitions_count,
+        "replication_factor": replication_factor,
+        "configs": [
+            {
+                "name": "cleanup.policy",
+                "value": cleanup_policy
+            },
+            {
+                "name": "compression.type",
+                "value": compression_type
+            },
+            {
+                "name": "retention.ms",
+                "value": retention_ms
+            },
+            {
+                "name": "max.message.bytes",
+                "value": max_message_bytes
+            }
+        ]
+      }
     }
     topics_list.append(topic_dict)
 

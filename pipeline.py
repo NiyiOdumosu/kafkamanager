@@ -1,23 +1,28 @@
+from datetime import datetime, timedelta
 from github import Github
 from deepdiff import DeepDiff
+
 import logging
 import os
 import requests
 import json
 import re
+import string
+import subprocess
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 HEADERS = {'Content-type': 'application/json', 'Accept': 'application/json'}
-REST_URL = os.getenv('REST_URL')
+REST_PROXY_URL = os.getenv('REST_URL')
 CLUSTER_ID = os.getenv('KAFKA_CLUSTER_ID')
+CONNECT_REST_URL = os.getenv('CONNECT_REST_URL')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_topics_from_branches():
+def get_content_from_branches(source_file, source_branch, feature_file, feature_branch):
     """
     Retrieve topic configurations from 'main' and 'test' branches of the Kafka Manager repository.
 
@@ -34,9 +39,9 @@ def get_topics_from_branches():
     try:
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo("NiyiOdumosu/kafkamanager")
-        feature_topic_content = repo.get_contents("application1/topics/topics.json", ref="test")
-        main_topic_content = repo.get_contents("application1/topics/topics.json", ref="main")
-        source_topics = json.loads(main_topic_content.decoded_content)
+        feature_topic_content = repo.get_contents(feature_file, ref=feature_branch)
+        source_topic_content = repo.get_contents(source_file, ref=source_branch)
+        source_topics = json.loads(source_topic_content.decoded_content)
         feature_topics = json.loads(feature_topic_content.decoded_content)
 
         return source_topics, feature_topics
@@ -65,47 +70,50 @@ def find_changed_topics(source_topics, new_topics):
             if diff:
                 print(diff['values_changed'])
                 # Check if this is a partition change
-                if diff['values_changed'] == { "root[\'partitions_count\']": diff['values_changed']["root[\'partitions_count\']"]}:
-                    for change_type, details in diff.items():
-                        change_dict = {
-                            "topic_name": topic_name,
-                            "changes": []
-                        }
-                        for change in details:
-                            configs_changes = re.findall(r"\['(.*?)'\]", change)
-                            change_dict["changes"].append({
-                                configs_changes[0]: details[change]['new_value']
-                            })
-                    changed_topic_names.append({"type": "update", "changes": change_dict})
-                else:
-                    for change_type, details in diff.items():
-                        change_dict = {
-                            "topic_name": topic_name,
-                            "changes": []
-                        }
+                try:
+                    if diff['values_changed'] == { "root[\'partitions_count\']": diff['values_changed']["root[\'partitions_count\']"]}:
+                        for change_type, details in diff.items():
+                            change_dict = {
+                                "topic_name": topic_name,
+                                "changes": []
+                            }
+                            for change in details:
+                                configs_changes = re.findall(r"\['(.*?)'\]", change)
+                                change_dict["changes"].append({
+                                    configs_changes[0]: details[change]['new_value']
+                                })
+                        changed_topic_names.append({"type": "update", "changes": change_dict})
+                except KeyError as ke:
+                    logger.error(ke)
 
-                        for change in details:
-                            configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                            if configs_changes:
-                                for index in configs_changes:
-                                    # config_index = int(configs_changes[int(index)])
-                                    prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                                    change_dict["changes"].append({
-                                        "name": prop_name["name"],
-                                        "value": details[change]['new_value']
-                                    })
+                for change_type, details in diff.items():
+                    change_dict = {
+                        "topic_name": topic_name,
+                        "changes": []
+                    }
 
-                                continue
-
-                            property_name_list = re.findall(r"\['(.*?)'\]", change)
-                            if property_name_list:
-                                prop_name = property_name_list[0]
+                    for change in details:
+                        configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                        if configs_changes:
+                            for index in configs_changes:
+                                # config_index = int(configs_changes[int(index)])
+                                prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
                                 change_dict["changes"].append({
                                     "name": prop_name["name"],
                                     "value": details[change]['new_value']
                                 })
 
-                    changed_topic_names.append({"type": "update", "changes": change_dict})
+                            continue
+
+                        property_name_list = re.findall(r"\['(.*?)'\]", change)
+                        if property_name_list:
+                            prop_name = property_name_list[0]
+                            change_dict["changes"].append({
+                                "name": prop_name["name"],
+                                "value": details[change]['new_value']
+                            })
+
+                changed_topic_names.append({"type": "update", "changes": change_dict})
         else:
             # Topic was removed
             changed_topic_names.append({topic_name: source_topics_dict.get(topic_name), "type": "removed"})
@@ -170,7 +178,7 @@ def add_new_topic(topic):
     - topic (dict): Dictionary representing the configuration of the new Kafka topic.
 
     """
-    rest_topic_url = build_topic_rest_url(REST_URL, CLUSTER_ID)
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
     topic_json = json.dumps(topic)
 
     response = requests.post(rest_topic_url, data=topic_json, headers=HEADERS)
@@ -196,7 +204,7 @@ def update_existing_topic(topic_name, topic_config):
     It then updates the replication factor and partition count using helper functions.
     Finally, it alters the topic configurations using a POST request to the Kafka REST API.
     """
-    rest_topic_url = build_topic_rest_url(REST_URL, CLUSTER_ID)
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
     try:
         response = requests.get(rest_topic_url + topic_name)
     except Exception as e:
@@ -210,7 +218,7 @@ def update_existing_topic(topic_name, topic_config):
         updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
         logger.info("altering configs to " + updated_Configs)
         response = requests.post(f"{rest_topic_url}{topic_name}" + "/configs:alter", data=updated_Configs, headers=HEADERS)
-        logger.info("this is the code " + str(response.status_code) + " this is the reason: " + response.reason)
+        logger.info("this is the code " + str(response.status_code) + " this is the reason: " + response.text)
 
 
 
@@ -265,7 +273,7 @@ def delete_topic(topic_name):
     This method first checks if the topic exists by making a GET request to the Kafka REST API.
     If the topic exists, it proceeds to delete the topic using a DELETE request.
     """
-    rest_topic_url = build_topic_rest_url(REST_URL, CLUSTER_ID)
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
     get_response = requests.get(rest_topic_url + topic_name)
     if get_response.status_code == 200:
@@ -349,7 +357,7 @@ def add_new_acl(acl):
     - acl (dict): Dictionary representing the configuration of the new Kafka ACL.
 
     """
-    rest_acl_url = build_acl_rest_url(REST_URL, CLUSTER_ID)
+    rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
     topic_json = json.dumps(acl)
 
     response = requests.post(rest_acl_url, data=topic_json, headers=HEADERS)
@@ -373,7 +381,7 @@ def delete_acl(acl):
     This method first checks if the topic exists by making a GET request to the Kafka REST API.
     If the topic exists, it proceeds to delete the topic using a DELETE request.
     """
-    rest_acl_url = build_acl_rest_url(REST_URL, CLUSTER_ID)
+    rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
     get_response = requests.get(rest_acl_url + acl['topic_name'])
     if get_response.status_code == 200:
@@ -386,6 +394,7 @@ def delete_acl(acl):
         logger.info(f"The acl {acl.keys()[0]} has been successfully deleted")
     else:
         logger.error(f"The acl {acl.keys()[0]} returned {str(response.status_code)} due to the following reason: {response.reason}")
+
 
 def process_changed_acls(changed_acls):
     for i, topic in enumerate(changed_acls):
@@ -402,8 +411,53 @@ def process_changed_acls(changed_acls):
             delete_acl(topic_configs)
 
 
+def build_connect_rest_url(base_url, connector_name):
+    """
+    Build the REST API URL for Connect cluster on the provided base URL .
+
+    Parameters:
+    - base_url (str): The base URL of the Kafka REST API.
+
+    Returns:
+    str: The constructed REST API URL for connectors.
+    """
+    return f'{base_url}/connectors/{connector_name}/config'
+
+
+def process_connector_changes(connector_file):
+    # Add a new connector
+    connector_name = connector_file.split("/connectors/")[1].replace(".json","")
+    connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
+    json_file = open(connector_file)
+    json_string_template = string.Template(json_file.read())
+    json_string = json_string_template.substitute(**os.environ)
+
+    response = requests.put(connect_rest_url, data=json_string, headers=HEADERS)
+    if response.status_code == 201:
+        logger.info(f"The connector {connector_name} has been successfully deleted")
+    else:
+        logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
+
+
 if __name__ == "__main__":
-    old_topics, new_topics = get_topics_from_branches()
-    changed_topics = find_changed_topics(old_topics, new_topics)
-    print(changed_topics)
-    process_changed_topics(changed_topics)
+
+    source_file = "application1/topics/topics.json"
+    source_branch = "main"
+
+    feature_file = "application1/topics/topics.json"
+    feature_branch = "test"
+    source_content, feature_content = get_content_from_branches(source_file, source_branch, feature_file, feature_branch)
+    if "topic" in source_file and feature_file:
+        changed_topics = find_changed_topics(source_content, feature_content)
+        process_changed_topics(changed_topics)
+    if "connector" in feature_file:
+        g = Github(GITHUB_TOKEN)
+        repo = g.get_repo("NiyiOdumosu/kafkamanager")
+        process_connector_changes(feature_file)
+        # since = datetime.now() - timedelta(days=1)
+        # commits = repo.get_commits(since=since)
+        # subprocess.run(['git', 'diff', '--name-status', ''])
+        # for commit in commits:
+        #     output = subprocess.run(['git', 'diff', '--name-status', commit.sha])
+        #     print(output.stdout)
+

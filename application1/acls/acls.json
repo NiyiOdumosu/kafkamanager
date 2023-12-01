@@ -1,0 +1,13 @@
+[
+    {
+        "User:producer-TOPIC-WRITE": {
+            "resource_type": "TOPIC",
+            "resource_name": "topic_f",
+            "pattern_type": "LITERAL",
+            "principal": "User:producer",
+            "host": "*",
+            "operation": "WRITE",
+            "permission": "ALLOW"
+        }
+    }
+]

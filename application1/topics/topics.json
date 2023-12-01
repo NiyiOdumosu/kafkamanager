@@ -2,8 +2,8 @@
     {
         "topic_a": {
             "topic_name": "topic_a",
-            "partitions_count": "4",
-            "replication_factor": "1",
+            "partitions_count": "4.0",
+            "replication_factor": "1.0",
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -15,11 +15,11 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 604800000
+                    "value": 86400000.0
                 },
                 {
-                    "name": "segment.bytes",
-                    "value": 1073741824
+                    "name": "max.message.bytes",
+                    "value": 1048588.0
                 }
             ]
         }
@@ -27,8 +27,8 @@
     {
         "topic_b": {
             "topic_name": "topic_b",
-            "partitions_count": "3",
-            "replication_factor": "1",
+            "partitions_count": "3.0",
+            "replication_factor": "1.0",
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -40,11 +40,11 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 604800000
+                    "value": 86400000.0
                 },
                 {
-                    "name": "segment.bytes",
-                    "value": 1073741824
+                    "name": "max.message.bytes",
+                    "value": 1048588.0
                 }
             ]
         }
@@ -52,8 +52,8 @@
     {
         "topic_c": {
             "topic_name": "topic_c",
-            "partitions_count": "4",
-            "replication_factor": "1",
+            "partitions_count": "4.0",
+            "replication_factor": "1.0",
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -65,11 +65,11 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 604800000
+                    "value": 86400000.0
                 },
                 {
-                    "name": "segment.bytes",
-                    "value": 1073741824
+                    "name": "max.message.bytes",
+                    "value": 1048588.0
                 }
             ]
         }
@@ -77,8 +77,8 @@
     {
         "topic_e": {
             "topic_name": "topic_e",
-            "partitions_count": "7",
-            "replication_factor": "1",
+            "partitions_count": "7.0",
+            "replication_factor": "1.0",
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -90,20 +90,20 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 604800000
+                    "value": 86400000.0
                 },
                 {
-                    "name": "segment.bytes",
-                    "value": 1073741824
+                    "name": "max.message.bytes",
+                    "value": 1048588.0
                 }
             ]
         }
     },
-       {
+    {
         "topic_f": {
             "topic_name": "topic_f",
-            "partitions_count": "3",
-            "replication_factor": "1",
+            "partitions_count": "4",
+            "replication_factor": "3",
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -111,15 +111,15 @@
                 },
                 {
                     "name": "compression.type",
-                    "value": "zstd"
+                    "value": "producer"
                 },
                 {
                     "name": "retention.ms",
-                    "value": 604800000
+                    "value": 86400000
                 },
                 {
-                    "name": "segment.bytes",
-                    "value": 1073741824
+                    "name": "max.message.bytes",
+                    "value": 1048588
                 }
             ]
         }

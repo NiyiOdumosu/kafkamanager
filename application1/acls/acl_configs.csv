@@ -1,0 +1,2 @@
+principal,resource_type,resource_name,pattern_type,host,operation,permission
+User:producer,TOPIC,topic_f,LITERAL,*,WRITE,ALLOW
