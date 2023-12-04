@@ -15,15 +15,13 @@ HEADERS = {'Content-type': 'application/json', 'Accept': 'application/json'}
 REST_PROXY_URL = os.getenv('REST_URL')
 CLUSTER_ID = os.getenv('KAFKA_CLUSTER_ID')
 CONNECT_REST_URL = os.getenv('CONNECT_REST_URL')
-BASIC_AUTH_USER = os.getenv('BASIC_AUTH_USER')
-BASIC_AUTH_PASS = os.getenv('BASIC_AUTH_PASS')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_content_from_branches(source_file, source_branch, feature_file, feature_branch):
+def get_content_from_branches(repo, source_file, source_branch, feature_file, feature_branch):
     """
     Retrieve topic configurations from 'main' and 'test' branches of the Kafka Manager repository.
 
@@ -179,14 +177,8 @@ def add_new_topic(topic):
     - topic (dict): Dictionary representing the configuration of the new Kafka topic.
 
     """
-    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
-    topic_json = json.dumps(topic)
 
-    response = requests.post(rest_topic_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=topic_json, headers=HEADERS)
-    if response.status_code == 201:
-        logger.info(f"The topic {topic['topic_name']} has been successfully created")
-    else:
-        logger.error(f"The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.reason}" )
+    logger.info(f"The topic {topic['topic_name']} will be created once the PR is merged")
 
 
 def update_existing_topic(topic_name, topic_config):
@@ -207,7 +199,7 @@ def update_existing_topic(topic_name, topic_config):
     """
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
     try:
-        response = requests.get(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS),)
+        response = requests.get(rest_topic_url + topic_name)
     except Exception as e:
         logger.error(e)
 
@@ -217,9 +209,8 @@ def update_existing_topic(topic_name, topic_config):
         update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
     else:
         updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
-        logger.info("altering configs to " + updated_Configs)
-        response = requests.post(f"{rest_topic_url}{topic_name}" + "/configs:alter", auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=updated_Configs, headers=HEADERS)
-        logger.info("this is the code " + str(response.status_code) + " this is the reason: " + response.text)
+        logger.info(f"The topic {topic_name} will be updated with the following topic configs {updated_Configs} once the PR is merged")
+
 
 
 
@@ -245,17 +236,9 @@ def update_partition_count(current_topic_definition, rest_topic_url, partition_c
         new_partition_count = int(partition_count)
         if new_partition_count > current_partitions_count:
             logger.info(f"A requested increase of partitions for topic  {topic_name} is from "
-                        f"{str(current_partitions_count)} to {str(new_partition_count)}")
-            partition_response = requests.patch(f"{rest_topic_url}{topic_name}",
-                                                auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS),
-                                                data="{\"partitions_count\":" + str(new_partition_count) + "}")
-            if partition_response.status_code != 200:
-                logger.info(
-                    f"The partition increase failed for topic {topic_name} due to {str(partition_response.status_code)} -  {partition_response.reason}")
-                exit(1)
-            logger.info(f"The partition increase for topic {topic_name} was successful")
+                        f"{str(current_partitions_count)} to {str(new_partition_count)}. This will be applied after the PR is merged.")
         elif new_partition_count < current_partitions_count:
-            logger.error("Cannot reduce partition count for a given topic")
+            logger.error(f"Cannot reduce partition count from {str(current_partitions_count)} to {str(new_partition_count)} for a given topic")
             exit(1)
     except Exception as e:
         logger.error("Failed due to " + e)
@@ -277,18 +260,12 @@ def delete_topic(topic_name):
     """
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    get_response = requests.get(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
+    get_response = requests.get(rest_topic_url + topic_name)
     if get_response.status_code == 200:
         logger.info(f"Response code is {str(get_response.status_code)}")
+        logger.info(f"The topic {topic_name} will be deleted once the PR is merged.")
     else:
         logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
-
-    response = requests.delete(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
-    if response.status_code == 204:
-            logger.info(f"The topic {topic_name} has been successfully deleted")
-    else:
-        logger.error(f"The topic {topic_name} returned {str(response.status_code)} due to the following reason: {response.reason}" )
-
 
 
 def find_changed_acls(source_acls, feature_acls):
@@ -359,14 +336,7 @@ def add_new_acl(acl):
     - acl (dict): Dictionary representing the configuration of the new Kafka ACL.
 
     """
-    rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
-    topic_json = json.dumps(acl)
-
-    response = requests.post(rest_acl_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=topic_json, headers=HEADERS)
-    if response.status_code == 201:
-        logger.info(f"The acl {acl.keys()[0]} has been successfully created")
-    else:
-        logger.error(f"The topic {acl.keys()[0]} returned {str(response.status_code)} due to the follwing reason: {response.reason}")
+    logger.info(f"The acl {acl[0]} will be created once the PR is merged")
 
 
 def delete_acl(acl):
@@ -385,17 +355,13 @@ def delete_acl(acl):
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    get_response = requests.get(rest_acl_url + acl['topic_name'], auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
+    get_response = requests.get(rest_acl_url + acl['topic_name']) # change this
     if get_response.status_code == 200:
         logger.info(f"Response code is {str(get_response.status_code)}")
+        logger.info(f"The connector {acl[0].keys()} will be removed once the PR is merged.")
     else:
         logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
 
-    response = requests.delete(rest_acl_url + acl['topic_name'], auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
-    if response.status_code == 204:
-        logger.info(f"The acl {acl.keys()[0]} has been successfully deleted")
-    else:
-        logger.error(f"The acl {acl.keys()[0]} returned {str(response.status_code)} due to the following reason: {response.reason}")
 
 
 def process_changed_acls(changed_acls):
@@ -434,11 +400,7 @@ def process_connector_changes(connector_file):
     json_string_template = string.Template(json_file.read())
     json_string = json_string_template.substitute(**os.environ)
 
-    response = requests.put(connect_rest_url, data=json_string, headers=HEADERS)
-    if response.status_code == 201:
-        logger.info(f"The connector {connector_name} has been successfully deleted")
-    else:
-        logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
+    logger.info(f"The connector {connector_name} will be added once the PR is merged with the following configs {json_string}")
 
 
 if __name__ == "__main__":
@@ -448,6 +410,8 @@ if __name__ == "__main__":
 
     feature_file = "application1/connectors/connect-datagen-src.json"
     feature_branch = "test"
+
+    repo = "NiyiOdumosu/kafkamanager"
     source_content, feature_content = get_content_from_branches(source_file, source_branch, feature_file, feature_branch)
     if "topic" in (source_file and feature_file):
         changed_topics = find_changed_topics(source_content, feature_content)
@@ -465,6 +429,6 @@ if __name__ == "__main__":
 
     if "connector" in feature_file:
         g = Github(GITHUB_TOKEN)
-        repo = g.get_repo("NiyiOdumosu/kafkamanager")
-        # process_connector_changes(feature_file)
+        repo = g.get_repo(repo)
+        process_connector_changes(feature_file)
 

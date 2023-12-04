@@ -1,10 +1,10 @@
 [
     {
-        "User:producer-TOPIC-WRITE": {
+        "User:clientrestproxy-TOPIC-WRITE": {
             "resource_type": "TOPIC",
-            "resource_name": "topic_f",
+            "resource_name": "topic_a",
             "pattern_type": "LITERAL",
-            "principal": "User:producer",
+            "principal": "User:clientrestproxy",
             "host": "*",
             "operation": "WRITE",
             "permission": "ALLOW"
