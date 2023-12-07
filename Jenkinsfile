@@ -21,7 +21,7 @@ pipeline {
 
                     env.kafka_user="rahul"
 
-                    sh ('/usr/local/bin/python script.py')
+                    sh ('python3 pipeline.py application1/acls/acls.json  $SOURCE_BRANCH application1/acls/acls.json $TARGET_BRANCH')
 
                    
                 }
