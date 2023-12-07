@@ -8,7 +8,7 @@ acl_list = []
 # Add document link to the future topic configs
 
 for index, row in df.iterrows():
-    acl_id = f"{row['principal']}-{row['resource_type']}-{row['operation']}"
+    acl_id = f"{row['principal']}-{row['resource_name']}-{row['operation']}"
     topic_dict = {
         f"{acl_id}":
             {
