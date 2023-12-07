@@ -358,15 +358,14 @@ def add_new_acl(acl):
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
     acl_json = json.dumps(acl)
-    print(acl_json)
     response = requests.post(rest_acl_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=acl_json, headers=HEADERS)
-    with open('CHANGELOG.md', 'w') as f:
+    with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 201:
             logger.info(f"The acl {acl_json} has been successfully created")
-            f.write(f"{datetime.now()} - {acl_json} has been successfully created")
+            f.writelines(f"{datetime.now()} - {acl_json} has been successfully created\n")
         else:
             logger.error(f"The acl {acl_json} returned {str(response.status_code)} due to the following reason: {response.reason}")
-            f.write(f"{datetime.now()} - {acl_json} attempted to be created but was unsuccessful. REST API returned {str(response.status_code)} due to the following reason: {response.reason}")
+            f.writelines(f"{datetime.now()} - {acl_json} attempted to be created but was unsuccessful. REST API returned {str(response.status_code)} due to the following reason: {response.reason}\n")
 
 
 def delete_acl(acl):
@@ -392,12 +391,15 @@ def delete_acl(acl):
 
 
 def add_or_remove_acls(changed_acls):
-    for i, topic in enumerate(changed_acls):
-        acl_configs = list(topic.values())[i]
-        if topic['type'] == 'new':
-            add_new_acl(acl_configs)
+    for i, acls in enumerate(changed_acls):
+        acl_configs = list(acls.values())
+        if acls['type'] == 'new':
+            print(acl_configs[0])
+            add_new_acl(acl_configs[0])
+        elif acls['type'] == 'removed':
+            delete_acl(acl_configs[0])
         else:
-            delete_acl(acl_configs)
+            continue
 
 
 def build_connect_rest_url(base_url, connector_name):
