@@ -1,13 +1,14 @@
 from github import Github
 from deepdiff import DeepDiff
 
+# import click
+import json
 import logging
 import os
-import requests
-import json
-import re
 import string
 import subprocess
+import re
+import requests
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
@@ -40,10 +41,10 @@ def get_content_from_branches(source_file, source_branch, feature_file, feature_
     try:
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo("NiyiOdumosu/kafkamanager")
-        feature_topic_content = repo.get_contents(feature_file, ref=feature_branch)
-        source_topic_content = repo.get_contents(source_file, ref=source_branch)
-        source_topics = json.loads(source_topic_content.decoded_content)
-        feature_topics = json.loads(feature_topic_content.decoded_content)
+        feature_branch_content = repo.get_contents(feature_file, ref=feature_branch)
+        source_branch_content = repo.get_contents(source_file, ref=source_branch)
+        source_topics = json.loads(source_branch_content.decoded_content)
+        feature_topics = json.loads(feature_branch_content.decoded_content)
 
         return source_topics, feature_topics
     except Exception as e:
@@ -317,25 +318,19 @@ def find_changed_acls(source_acls, feature_acls):
 
     changed_acls = []
     # Check for changes and deletions
-    for topic_name, source_topic in source_acls_dict.items():
-        feature_topic = feature_acls_dict.get(topic_name)
-        if feature_topic:
-            diff = DeepDiff(source_topic, feature_topic, ignore_order=True)
-            if diff:
-                changed_acls.append({topic_name: diff, "type": "update"})
-                logger.info(f"The following topic will be updated : {topic_name}")
-        else:
-            # Topic was removed
-            changed_acls.append({topic_name: source_acls_dict.get(topic_name), "type": "removed"})
-            logger.info(f"The following topic will be removed : {topic_name}")
+    for acl_name, source_acl in source_acls_dict.items():
+        feature_acl = feature_acls_dict.get(acl_name)
+        if not feature_acl:
+            # ACL was removed
+            changed_acls.append({acl_name: source_acls_dict.get(acl_name), "type": "removed"})
+            logger.info(f"The following acl will be removed : {acl_name}")
 
     # Check for new additions
-    for topic_name in feature_acls_dict:
-        if topic_name not in source_acls_dict.keys():
-            changed_acls.append({topic_name: feature_acls_dict.get(topic_name), "type": "new"})
-            logger.info(f"The following topic will be added : {topic_name}")
+    for acl_name in feature_acls_dict:
+        if acl_name not in source_acls_dict.keys():
+            changed_acls.append({acl_name: feature_acls_dict.get(acl_name), "type": "new"})
+            logger.info(f"The following acl will be added : {acl_name}")
     return changed_acls
-
 
 
 def build_acl_rest_url(base_url, cluster_id):
@@ -351,6 +346,7 @@ def build_acl_rest_url(base_url, cluster_id):
     """
     return f'{base_url}/v3/clusters/{cluster_id}/acls/'
 
+
 def add_new_acl(acl):
     """
     Add a new Kafka acl using the provided ACL configuration.
@@ -360,11 +356,11 @@ def add_new_acl(acl):
 
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
-    topic_json = json.dumps(acl)
-
-    response = requests.post(rest_acl_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=topic_json, headers=HEADERS)
+    acl_json = json.dumps(acl)
+    print(acl_json)
+    response = requests.post(rest_acl_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=acl_json, headers=HEADERS)
     if response.status_code == 201:
-        logger.info(f"The acl {acl.keys()[0]} has been successfully created")
+        logger.info(f"The acl {acl_json} has been successfully created")
     else:
         logger.error(f"The topic {acl.keys()[0]} returned {str(response.status_code)} due to the follwing reason: {response.reason}")
 
@@ -384,33 +380,21 @@ def delete_acl(acl):
     If the topic exists, it proceeds to delete the topic using a DELETE request.
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
-
-    get_response = requests.get(rest_acl_url + acl['topic_name'], auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
-    if get_response.status_code == 200:
-        logger.info(f"Response code is {str(get_response.status_code)}")
+    response = requests.delete(rest_acl_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), params=acl)
+    if response.status_code == 200:
+        logger.info(f"The acl {acl} has been successfully deleted")
     else:
-        logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
-
-    response = requests.delete(rest_acl_url + acl['topic_name'], auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
-    if response.status_code == 204:
-        logger.info(f"The acl {acl.keys()[0]} has been successfully deleted")
-    else:
-        logger.error(f"The acl {acl.keys()[0]} returned {str(response.status_code)} due to the following reason: {response.reason}")
+        logger.error(f"The acl {acl} returned {str(response.status_code)} due to the following reason: {response.reason}")
 
 
-def process_changed_acls(changed_acls):
+def add_or_remove_acls(changed_acls):
     for i, topic in enumerate(changed_acls):
-        topic_name = list(topic.keys())[i]
-        topic_configs = list(topic.values())[i]
+        acl_name = list(topic.keys())[i]
+        acl_configs = list(topic.values())[i]
         if topic['type'] == 'new':
-            add_new_acl(topic_configs)
-        elif topic['type'] == 'update':
-            for k, v in topic.items():
-                print(f"{k} : {v}")
-            print(topic_configs)
-            update_existing_topic(topic_name, topic_configs)
+            add_new_acl(acl_configs)
         else:
-            delete_acl(topic_configs)
+            delete_acl(acl_configs)
 
 
 def build_connect_rest_url(base_url, connector_name):
@@ -441,12 +425,13 @@ def process_connector_changes(connector_file):
         logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
 
 
+# @click.command()
 if __name__ == "__main__":
 
-    source_file = "application1/topics/topics.json"
+    source_file = "application1/acls/acls.json"
     source_branch = "main"
 
-    feature_file = "application1/connectors/connect-datagen-src.json"
+    feature_file = "application1/acls/acls.json"
     feature_branch = "test"
     source_content, feature_content = get_content_from_branches(source_file, source_branch, feature_file, feature_branch)
     if "topic" in (source_file and feature_file):
@@ -455,7 +440,7 @@ if __name__ == "__main__":
 
     if "acl" in (source_file and feature_file):
         changed_acls = find_changed_acls(source_content, feature_content)
-        process_changed_acls(changed_topics)
+        add_or_remove_acls(changed_acls)
 
     subprocess.run(['git', 'checkout', feature_branch]).stdout
     latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD']).stdout
