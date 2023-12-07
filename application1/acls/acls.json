@@ -1,6 +1,6 @@
 [
     {
-        "User:clientrestproxy-TOPIC-WRITE": {
+        "User:clientrestproxy-topic_a-WRITE": {
             "resource_type": "TOPIC",
             "resource_name": "topic_a",
             "pattern_type": "LITERAL",
