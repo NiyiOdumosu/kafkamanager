@@ -1,0 +1,3 @@
+2023-12-07 12:09:06.712026 - {"resource_type": "TOPIC", "resource_name": "topic_a", "pattern_type": "LITERAL", "principal": "User:clientrestproxy", "host": "*", "operation": "READ", "permission": "ALLOW"} has been successfully created
+2023-12-07 12:09:09.036265 - {"resource_type": "TOPIC", "resource_name": "topic_b", "pattern_type": "LITERAL", "principal": "User:clientrestproxy", "host": "*", "operation": "READ", "permission": "ALLOW"} has been successfully created
+2023-12-07 12:09:13.751251 - {"resource_type": "TOPIC", "resource_name": "topic_c", "pattern_type": "LITERAL", "principal": "User:clientrestproxy", "host": "*", "operation": "READ", "permission": "ALLOW"} has been successfully created
