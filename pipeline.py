@@ -185,10 +185,13 @@ def add_new_topic(topic):
     topic_json = json.dumps(topic)
 
     response = requests.post(rest_topic_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=topic_json, headers=HEADERS)
-    if response.status_code == 201:
-        logger.info(f"The topic {topic['topic_name']} has been successfully created")
-    else:
-        logger.error(f"The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.reason}" )
+    with open('CHANGELOG.md', 'a') as f:
+        if response.status_code == 201:
+            logger.info(f"The topic {topic['topic_name']} has been successfully created")
+            f.writelines(f"{datetime.now()} - The topic {topic['topic_name']} has been successfully created\n")
+        else:
+            logger.error(f"The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.text}" )
+            f.writelines(f"{datetime.now()} - The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.text}\n")
 
 
 def update_existing_topic(topic_name, topic_config):
@@ -251,11 +254,13 @@ def update_partition_count(current_topic_definition, rest_topic_url, partition_c
             partition_response = requests.patch(f"{rest_topic_url}{topic_name}",
                                                 auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS),
                                                 data="{\"partitions_count\":" + str(new_partition_count) + "}")
-            if partition_response.status_code != 200:
-                logger.info(
-                    f"The partition increase failed for topic {topic_name} due to {str(partition_response.status_code)} -  {partition_response.reason}")
-                exit(1)
-            logger.info(f"The partition increase for topic {topic_name} was successful")
+            with open('CHANGELOG.md', 'a') as f:
+                if partition_response.status_code != 200:
+                    logger.info(
+                        f"The partition increase failed for topic {topic_name} due to {str(partition_response.status_code)} -  {partition_response.text}")
+                    f.writelines(f"{datetime.now()} - The partition increase for topic {topic_name} was successful\n")
+                    exit(1)
+                logger.info(f"The partition increase for topic {topic_name} was successful")
         elif new_partition_count < current_partitions_count:
             logger.error("Cannot reduce partition count for a given topic")
             exit(1)
@@ -283,14 +288,16 @@ def delete_topic(topic_name):
     if get_response.status_code == 200:
         logger.info(f"Response code is {str(get_response.status_code)}")
     else:
-        logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
+        logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.text)}" )
 
     response = requests.delete(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
-    if response.status_code == 204:
-            logger.info(f"The topic {topic_name} has been successfully deleted")
-    else:
-        logger.error(f"The topic {topic_name} returned {str(response.status_code)} due to the following reason: {response.reason}" )
-
+    with open('CHANGELOG.md', 'a') as f:
+        if response.status_code == 204:
+                logger.info(f"The topic {topic_name} has been successfully deleted")
+                f.writelines(f"{datetime.now()} - {topic_name} has been successfully deleted\n")
+        else:
+            logger.error(f"The topic {topic_name} returned {str(response.status_code)} due to the following reason: {response.text}" )
+            f.writelines(f"{datetime.now()} - {topic_name} attempted to be deleted but returned {str(response.status_code)} due to the following reason: {response.text}\n")
 
 
 def find_changed_acls(source_acls, feature_acls):
@@ -364,8 +371,8 @@ def add_new_acl(acl):
             logger.info(f"The acl {acl_json} has been successfully created")
             f.writelines(f"{datetime.now()} - {acl_json} has been successfully created\n")
         else:
-            logger.error(f"The acl {acl_json} returned {str(response.status_code)} due to the following reason: {response.reason}")
-            f.writelines(f"{datetime.now()} - {acl_json} attempted to be created but was unsuccessful. REST API returned {str(response.status_code)} due to the following reason: {response.reason}\n")
+            logger.error(f"The acl {acl_json} returned {str(response.status_code)} due to the following reason: {response.text}")
+            f.writelines(f"{datetime.now()} - {acl_json} attempted to be created but was unsuccessful. REST API returned {str(response.status_code)} due to the following reason: {response.text}\n")
 
 
 def delete_acl(acl):
@@ -384,10 +391,13 @@ def delete_acl(acl):
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
     response = requests.delete(rest_acl_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), params=acl)
-    if response.status_code == 200:
-        logger.info(f"The acl {acl} has been successfully deleted")
-    else:
-        logger.error(f"The acl {acl} returned {str(response.status_code)} due to the following reason: {response.reason}")
+    with open('CHANGELOG.md', 'a') as f:
+        if response.status_code == 200:
+            logger.info(f"The acl {acl} has been successfully deleted")
+            f.writelines(f"{datetime.now()} - {acl} has been successfully deleted\n")
+        else:
+            logger.error(f"The acl {acl} returned {str(response.status_code)} due to the following reason: {response.text}")
+            f.writelines(f"{datetime.now()} - {acl} attempted to be deleted but was unsuccessful. REST API returned {str(response.status_code)} due to the following reason: {response.text}\n")
 
 
 def add_or_remove_acls(changed_acls):
@@ -424,10 +434,13 @@ def process_connector_changes(connector_file):
     json_string = json_string_template.substitute(**os.environ)
 
     response = requests.put(connect_rest_url, data=json_string, headers=HEADERS)
-    if response.status_code == 201:
-        logger.info(f"The connector {connector_name} has been successfully deleted")
-    else:
-        logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
+    with open('CHANGELOG.md', 'a') as f:
+        if response.status_code == 201:
+            logger.info(f"The connector {connector_name} has been successfully created")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully created\n")
+        else:
+            logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
 
 
 @click.command()
