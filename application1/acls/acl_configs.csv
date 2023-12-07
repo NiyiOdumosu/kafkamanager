@@ -2,3 +2,5 @@ principal,resource_type,resource_name,pattern_type,host,operation,permission
 User:clientrestproxy,TOPIC,topic_a,LITERAL,*,WRITE,ALLOW
 User:clientrestproxy,TOPIC,topic_b,LITERAL,*,WRITE,ALLOW
 User:clientrestproxy,TOPIC,topic_c,LITERAL,*,WRITE,ALLOW
+User:clientrestproxy,TOPIC,topic_a,LITERAL,*,DESCRIBE,ALLOW
+User:clientrestproxy,TOPIC,topic_a,LITERAL,*,CREATE,ALLOW
