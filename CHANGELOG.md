@@ -1,0 +1,1 @@
+2023-12-07 11:22:44.899591 - {"resource_type": "TOPIC", "resource_name": "topic_c", "pattern_type": "LITERAL", "principal": "User:clientrestproxy", "host": "*", "operation": "WRITE", "permission": "ALLOW"} has been successfully created
