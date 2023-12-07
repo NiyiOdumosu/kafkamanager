@@ -365,8 +365,8 @@ def add_new_acl(acl):
             logger.info(f"The acl {acl_json} has been successfully created")
             f.write(f"{datetime.now()} - {acl_json} has been successfully created")
         else:
-            logger.error(f"The acl {acl_json} returned {str(response.status_code)} due to the follwing reason: {response.reason}")
-            f.write(f"{datetime.now()} - {acl_json} attempted to be created but was unsuccessful. REST API returned {str(response.status_code)} due to the follwing reason: {response.reason}")
+            logger.error(f"The acl {acl_json} returned {str(response.status_code)} due to the following reason: {response.reason}")
+            f.write(f"{datetime.now()} - {acl_json} attempted to be created but was unsuccessful. REST API returned {str(response.status_code)} due to the following reason: {response.reason}")
 
 
 def delete_acl(acl):
