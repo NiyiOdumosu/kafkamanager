@@ -160,8 +160,6 @@ def process_changed_topics(changed_topic_names):
         topic_name = list(topic.keys())[i]
         topic_configs = list(topic.values())[i]
         if topic['type'] == 'new':
-            if topic['configs']['name'] not in ('compact', 'delete'):
-                exit(1)
             add_new_topic(topic_configs)
         elif topic['type'] == 'update':
             update_existing_topic(topic['changes']['topic_name'], topic['changes']['changes'])
@@ -239,9 +237,6 @@ def update_existing_topic(topic_name, topic_config):
 
 
 def update_topic_configs(rest_topic_url, topic_config, topic_name):
-    if topic_config[0]['name'] == "cleanup.policy":
-        if topic_config[0]['value'].upper() != "DELETE":
-            exit(1)
     updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
     logger.info("altering configs to " + updated_Configs)
     with open('CHANGELOG.md', 'a') as f:

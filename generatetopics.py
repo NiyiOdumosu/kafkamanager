@@ -26,13 +26,15 @@ for index, row in df.iterrows():
 
     # Topic Validation Logic
     valid_compression_types = ("uncompressed", "zstd", "lz4", "snappy", "gzip", "producer")
-    # valid_cleanup_policy_types = ('delete')
+    valid_cleanup_policy_types = ('compact', 'delete', 'compact,delete')
     # cleanup_policy = 'DELETE' if str(row['cleanup.policy']) in ("DELETE") else str(row['cleanup.policy'])
 
-    if str(row['compression.type']) in valid_compression_types:
-        logger.info("Compression type is valid")
-    else:
+    if not str(row['compression.type']) in valid_compression_types:
         logger.error(f"Compression type is invalid. Should be one of {valid_compression_types}")
+        exit(1)
+
+    if not str(row['cleanup.policy']) in valid_cleanup_policy_types:
+        logger.error(f"Cleanup Policy type is invalid. Should be one of {valid_cleanup_policy_types}")
         exit(1)
 
     topic_dict = {
