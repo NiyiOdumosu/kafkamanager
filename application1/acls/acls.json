@@ -11,24 +11,24 @@
         }
     },
     {
-        "User:clientrestproxy-topic_b-WRITE": {
+        "User:clientrestproxy-topic_a-DESCRIBE": {
             "resource_type": "TOPIC",
-            "resource_name": "topic_b",
+            "resource_name": "topic_a",
             "pattern_type": "LITERAL",
             "principal": "User:clientrestproxy",
             "host": "*",
-            "operation": "WRITE",
+            "operation": "DESCRIBE",
             "permission": "ALLOW"
         }
     },
     {
-        "User:clientrestproxy-topic_c-WRITE": {
+        "User:clientrestproxy-topic_a-CREATE": {
             "resource_type": "TOPIC",
-            "resource_name": "topic_c",
+            "resource_name": "topic_a",
             "pattern_type": "LITERAL",
             "principal": "User:clientrestproxy",
             "host": "*",
-            "operation": "WRITE",
+            "operation": "CREATE",
             "permission": "ALLOW"
         }
     },

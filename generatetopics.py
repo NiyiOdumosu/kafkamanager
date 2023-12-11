@@ -1,9 +1,15 @@
 import pandas as pd
 import json
+import logging
 
 df = pd.read_csv('application1/topics/topic_configs.csv')
 
 topics_list = []
+
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add document link to the future topic configs
 
@@ -18,6 +24,18 @@ for index, row in df.iterrows():
     retention_ms = 86400000 if str(row['retention.ms']) == "nan" else int(row['retention.ms'])
     max_message_bytes = 1048588 if str(row['max.message.bytes']) == "nan" else int(row['max.message.bytes'])
 
+    # Topic Validation Logic
+    valid_compression_types = ("uncompressed", "zstd", "lz4", "snappy", "gzip", "producer")
+    valid_cleanup_policy_types = ('compact', 'delete', 'compact,delete')
+    # cleanup_policy = 'DELETE' if str(row['cleanup.policy']) in ("DELETE") else str(row['cleanup.policy'])
+
+    if not str(row['compression.type']) in valid_compression_types:
+        logger.error(f"Compression type is invalid. Should be one of {valid_compression_types}")
+        exit(1)
+
+    if not str(row['cleanup.policy']) in valid_cleanup_policy_types:
+        logger.error(f"Cleanup Policy type is invalid. Should be one of {valid_cleanup_policy_types}")
+        exit(1)
 
     topic_dict = {
         f"{topic_name}" : {
