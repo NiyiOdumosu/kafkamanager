@@ -6,3 +6,10 @@
 Topic configs failed to be applied to the topic due to 400 this is the reason: {"error_code":400,"message":"Cannot deserialize value of type `AlterEntry>` from Object value (token `JsonToken.START_OBJECT`)"}
 2023-12-11 15:49:22.587192 - The configs {"data":[{"name": "cleanup.policy", "value": "compact"}, {"name": "compression.type", "value": "zstd"}]} was successfully applied to topic_f
 
+2023-12-11 17:05:20.267821 - The configs {"data":[{"name": "cleanup.policy", "value": "compact"}, {"name": "compression.type", "value": "zstd"}]} was successfully applied to topic_f
+2023-12-11 17:05:20.310318 - The configs {"data":[{"name": "cleanup.policy", "value": "compact"}, {"name": "compression.type", "value": "zstd"}]} was successfully applied to topic_f
+2023-12-11 17:16:28.625489 - The configs {"data":[{"name": "cleanup.policy", "value": "compact"}, {"name": "compression.type", "value": "zstd"}]} was successfully applied to topic_f
+2023-12-11 17:16:46.623694 - The configs {"data":[{"name": "cleanup.policy", "value": "compact"}, {"name": "compression.type", "value": "zstd"}]} was successfully applied to topic_f
+2023-12-11 17:21:19.269783 - The configs {"data":[{"name": "cleanup.policy", "value": "compact"}, {"name": "compression.type", "value": "zstd"}]} was successfully applied to topic_f
+2023-12-11 17:22:28.713745 - The configs {"data":[{"name": "cleanup.policy", "value": "compact"}, {"name": "compression.type", "value": "zstd"}]} was successfully applied to topic_f
+2023-12-11 17:24:28.552742 - The configs {"data":[{"name": "cleanup.policy", "value": "compact"}, {"name": "compression.type", "value": "zstd"}]} was successfully applied to topic_f

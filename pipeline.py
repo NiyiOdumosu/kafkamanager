@@ -125,9 +125,9 @@ def find_changed_topics(source_topics, new_topics):
                                         "name": prop_name["name"],
                                         "value": details[change]['new_value']
                                     })
+                        changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
                     logger.error(ke)
-                changed_topic_names.append({"type": "update", "changes": change_dict})
         else:
             # Topic was removed
             changed_topic_names.append({topic_name: source_topics_dict.get(topic_name), "type": "removed"})
@@ -267,6 +267,8 @@ def update_partition_count(current_topic_definition, rest_topic_url, partition_c
     # Check if the requested update is the partition count
     try:
         new_partition_count = int(partition_count)
+        if new_partition_count == current_partitions_count:
+            logger.info(f"Requested partition count and current partition count is the same - {new_partition_count}")
         if new_partition_count > current_partitions_count:
             logger.info(f"A requested increase of partitions for topic  {topic_name} is from "
                         f"{str(current_partitions_count)} to {str(new_partition_count)}")
