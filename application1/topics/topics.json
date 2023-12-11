@@ -107,7 +107,7 @@
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "compact"
+                    "value": "delete"
                 },
                 {
                     "name": "compression.type",
