@@ -74,48 +74,59 @@ def find_changed_topics(source_topics, new_topics):
                 print(diff['values_changed'])
                 # Check if this is a partition change
                 try:
-                    if diff['values_changed'] == { "root[\'partitions_count\']": diff['values_changed']["root[\'partitions_count\']"]}:
+                    if diff['values_changed']["root[\'partitions_count\']"]:
                         for change_type, details in diff.items():
                             change_dict = {
                                 "topic_name": topic_name,
                                 "changes": []
                             }
                             for change in details:
-                                configs_changes = re.findall(r"\['(.*?)'\]", change)
-                                change_dict["changes"].append({
-                                    configs_changes[0]: details[change]['new_value']
-                                })
+                                if change == "root[\'partitions_count\']":
+                                    configs_changes = re.findall(r"\['(.*?)'\]", change)
+                                    change_dict["changes"].append({
+                                        configs_changes[0]: details[change]['new_value']
+                                    })
+                                else:
+                                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                                    if configs_changes:
+                                        for index in configs_changes:
+                                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                                            change_dict["changes"].append({
+                                                "name": prop_name["name"],
+                                                "value": details[change]['new_value']
+                                            })
                         changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
                     logger.error(ke)
+                try:
+                    if not diff['values_changed']["root[\'partitions_count\']"]:
+                        for change_type, details in diff.items():
+                            change_dict = {
+                                "topic_name": topic_name,
+                                "changes": []
+                            }
 
-                for change_type, details in diff.items():
-                    change_dict = {
-                        "topic_name": topic_name,
-                        "changes": []
-                    }
+                            for change in details:
+                                configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                                if configs_changes:
+                                    for index in configs_changes:
+                                        prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                                        change_dict["changes"].append({
+                                            "name": prop_name["name"],
+                                            "value": details[change]['new_value']
+                                        })
 
-                    for change in details:
-                        configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                        if configs_changes:
-                            for index in configs_changes:
-                                # config_index = int(configs_changes[int(index)])
-                                prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                                change_dict["changes"].append({
-                                    "name": prop_name["name"],
-                                    "value": details[change]['new_value']
-                                })
+                                    continue
 
-                            continue
-
-                        property_name_list = re.findall(r"\['(.*?)'\]", change)
-                        if property_name_list:
-                            prop_name = property_name_list[0]
-                            change_dict["changes"].append({
-                                "name": prop_name["name"],
-                                "value": details[change]['new_value']
-                            })
-
+                                property_name_list = re.findall(r"\['(.*?)'\]", change)
+                                if property_name_list:
+                                    prop_name = property_name_list[0]
+                                    change_dict["changes"].append({
+                                        "name": prop_name["name"],
+                                        "value": details[change]['new_value']
+                                    })
+                except KeyError as ke:
+                    logger.error(ke)
                 changed_topic_names.append({"type": "update", "changes": change_dict})
         else:
             # Topic was removed
@@ -149,14 +160,13 @@ def process_changed_topics(changed_topic_names):
         topic_name = list(topic.keys())[i]
         topic_configs = list(topic.values())[i]
         if topic['type'] == 'new':
+            if topic['configs']['name'] not in ('compact', 'delete'):
+                exit(1)
             add_new_topic(topic_configs)
         elif topic['type'] == 'update':
             update_existing_topic(topic['changes']['topic_name'], topic['changes']['changes'])
         else:
             delete_topic(topic_name)
-
-
-
 
 
 def build_topic_rest_url(base_url, cluster_id):
@@ -211,24 +221,38 @@ def update_existing_topic(topic_name, topic_config):
     Finally, it alters the topic configurations using a POST request to the Kafka REST API.
     """
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
-    try:
-        response = requests.get(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS),)
-    except Exception as e:
-        logger.error(e)
+    response = requests.get(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
+    if response.status_code != 200:
+        logger.error(f"The topic {topic_name} failed to be updated due to {response.status_code} - {response.text}")
+        exit(1)
 
     current_topic_definition = response.json()
     # Check if the requested update is a config change
-    if 'partitions_count' in topic_config[0].keys():
+    if'name' in topic_config[0].keys():
+        update_topic_configs(rest_topic_url, topic_config, topic_name)
+    elif ('partitions_count' in topic_config[0].keys()) and ('name' in topic_config[1].keys()):
         update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
+        topic_config.pop(0)
+        update_topic_configs(rest_topic_url, topic_config, topic_name)
     else:
-        updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
-        logger.info("altering configs to " + updated_Configs)
-        response = requests.post(f"{rest_topic_url}{topic_name}" + "/configs:alter", auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=updated_Configs, headers=HEADERS)
-        logger.info("this is the code " + str(response.status_code) + " this is the reason: " + response.text)
+        update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
 
 
-
-
+def update_topic_configs(rest_topic_url, topic_config, topic_name):
+    if topic_config[0]['name'] == "cleanup.policy":
+        if topic_config[0]['value'].upper() != "DELETE":
+            exit(1)
+    updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
+    logger.info("altering configs to " + updated_Configs)
+    with open('CHANGELOG.md', 'a') as f:
+        response = requests.post(f"{rest_topic_url}{topic_name}" + "/configs:alter",
+                                 auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=updated_Configs, headers=HEADERS)
+        if response.status_code == 204:
+            f.writelines(f"{datetime.now()} - The configs {updated_Configs} was successfully applied to {topic_name}\n")
+            logger.info(f"The configs {updated_Configs} was successfully applied to {topic_name}\n")
+        else:
+            f.writelines(f"Topic configs failed to be applied to the topic due to {str(response.status_code)} this is the reason: {response.text}\n")
+            logger.error(f"Topic configs failed to be applied to the topic due to {str(response.status_code)} this is the reason: {response.text}\n")
 
 def update_partition_count(current_topic_definition, rest_topic_url, partition_count, topic_name):
     """
