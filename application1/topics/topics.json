@@ -102,16 +102,16 @@
     {
         "topic_f": {
             "topic_name": "topic_f",
-            "partitions_count": "4",
+            "partitions_count": "5",
             "replication_factor": "3",
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "delete"
+                    "value": "compact"
                 },
                 {
                     "name": "compression.type",
-                    "value": "producer"
+                    "value": "zstd"
                 },
                 {
                     "name": "retention.ms",
