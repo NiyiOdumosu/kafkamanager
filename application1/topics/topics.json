@@ -107,11 +107,11 @@
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "compact"
+                    "value": "delete"
                 },
                 {
                     "name": "compression.type",
-                    "value": "zstd"
+                    "value": "producer"
                 },
                 {
                     "name": "retention.ms",
