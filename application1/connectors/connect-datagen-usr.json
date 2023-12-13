@@ -1,0 +1,10 @@
+{
+  "connector.class": "io.confluent.kafka.connect.datagen.DatagenConnector",
+  "kafka.topic" : "test",
+  "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "output.data.format" : "JSON",
+  "quickstart" : "USERS",
+  "tasks.max" : "1",
+  "user":"user1"
+
+}

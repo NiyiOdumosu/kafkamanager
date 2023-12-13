@@ -516,9 +516,7 @@ def main(source_branch):
             process_changed_topics(changed_topics)
 
         if "connectors" in file:
-            g = Github(GITHUB_TOKEN)
-            repo = g.get_repo("NiyiOdumosu/kafkamanager")
-            # process_connector_changes(feature_file)
+            process_connector_changes(file)
 
 
 if __name__ == '__main__':
