@@ -249,6 +249,7 @@ def update_topic_configs(rest_topic_url, topic_config, topic_name):
             f.writelines(f"Topic configs failed to be applied to the topic due to {str(response.status_code)} this is the reason: {response.text}\n")
             logger.error(f"Topic configs failed to be applied to the topic due to {str(response.status_code)} this is the reason: {response.text}\n")
 
+
 def update_partition_count(current_topic_definition, rest_topic_url, partition_count, topic_name):
     """
     Update the partition count for a Kafka topic based on the provided configuration.
@@ -465,31 +466,59 @@ def process_connector_changes(connector_file):
 
 
 @click.command()
-@click.argument('source_file')
 @click.argument('source_branch')
-@click.argument('feature_file')
-@click.argument('feature_branch')
-def main(source_file, source_branch, feature_file, feature_branch):
+def main(source_branch):
 
-    source_content, feature_content = get_content_from_branches(source_file, source_branch, feature_file, feature_branch)
-    if "topic" in (source_file and feature_file):
-        changed_topics = find_changed_topics(source_content, feature_content)
-        process_changed_topics(changed_topics)
+    subprocess.run(['git', 'checkout', source_branch]).stdout
+    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], capture_output=True).stdout
+    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1'], capture_output=True).stdout
 
-    if "acl" in (source_file and feature_file):
-        changed_acls = find_changed_acls(source_content, feature_content)
-        add_or_remove_acls(changed_acls)
+    latest_commit = latest_sha.decode('utf-8').rstrip('\n')
+    previous_commit = previous_sha.decode('utf-8').rstrip('\n')
 
-    subprocess.run(['git', 'checkout', feature_branch]).stdout
-    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD']).stdout
-    if latest_sha is not None:
-        output = subprocess.run(['git', 'diff', '--name-status', str(latest_sha)])
-        print(output.stdout)
+    files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], capture_output=True).stdout
+    files_string = files.decode('utf-8')
+    pattern = re.compile(r'([AMD])\s+(.+)')
+    files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
+    print(files_list)
 
-    if "connector" in feature_file:
-        g = Github(GITHUB_TOKEN)
-        repo = g.get_repo("NiyiOdumosu/kafkamanager")
-        # process_connector_changes(feature_file)
+    current_topics = 'application1/topics/current-topics.json'
+    previous_topics = 'application1/topics/previous-topics.json'
+
+    current_acls = 'application1/acls/current-acls.json'
+    previous_acls = 'application1/acls/previous-acls.json'
+
+    current_topics_command = f"git show HEAD:application1/topics/topics.json > {current_topics}"
+    previous_topics_command = f"git show HEAD:application1/topics/topics.json > {previous_topics}"
+
+    get_merged_acls_command = f"git show HEAD:application1/acls/acls.json > {current_acls}"
+    get_previous_acls_command = f"git show HEAD:application1/acls/acls.json > {previous_acls}"
+
+    for file in files_list:
+        if "topics.json" in file:
+            subprocess.run(current_topics_command, capture_output=True, shell=True)
+            subprocess.run(previous_topics_command, capture_output=True, shell=True)
+            with open(previous_topics, 'r') as previous_acls_file:
+                source_topics = json.load(previous_acls_file)
+            with open(current_topics, 'r') as current_acls_file:
+                feature_topics = json.load(current_acls_file)
+            changed_topics = find_changed_topics(source_topics, feature_topics)
+            process_changed_topics(changed_topics)
+
+        if "acls.json" in file:
+            subprocess.run(get_merged_acls_command, capture_output=True, shell=True)
+            subprocess.run(get_previous_acls_command, capture_output=True, shell=True)
+            with open(previous_topics, 'r') as previous_acls_file:
+                source_topics = json.load(previous_acls_file)
+            with open(current_acls, 'r') as current_acls_file:
+                feature_topics = json.load(current_acls_file)
+            changed_topics = find_changed_topics(source_topics, feature_topics)
+            process_changed_topics(changed_topics)
+
+        if "connectors" in file:
+            g = Github(GITHUB_TOKEN)
+            repo = g.get_repo("NiyiOdumosu/kafkamanager")
+            # process_connector_changes(feature_file)
 
 
 if __name__ == '__main__':

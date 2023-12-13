@@ -5,3 +5,7 @@ pyvenv.cfg
 bin/*
 lib/*
 .DS_Store
+application1/acls/previous-acls.json
+application1/acls/current-acls.json
+application1/topics/previous-topics.json
+application1/topics/current-topics.json'
