@@ -402,7 +402,6 @@ def add_or_remove_acls(changed_acls):
     for i, acls in enumerate(changed_acls):
         acl_configs = list(acls.values())
         if acls['type'] == 'new':
-            print(acl_configs[0])
             add_new_acl(acl_configs[0])
         elif acls['type'] == 'removed':
             delete_acl(acl_configs[0])
