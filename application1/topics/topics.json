@@ -82,11 +82,11 @@
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "delete"
+                    "value": "compact"
                 },
                 {
                     "name": "compression.type",
-                    "value": "lz4"
+                    "value": "producer"
                 },
                 {
                     "name": "retention.ms",

@@ -507,10 +507,10 @@ def main(source_branch):
     previous_acls = 'application1/acls/previous-acls.json'
 
     current_topics_command = f"git show HEAD:application1/topics/topics.json > {current_topics}"
-    previous_topics_command = f"git show HEAD:application1/topics/topics.json > {previous_topics}"
+    previous_topics_command = f"git show HEAD~1:application1/topics/topics.json > {previous_topics}"
 
     current_acls_command = f"git show HEAD:application1/acls/acls.json > {current_acls}"
-    previous_acls_command = f"git show HEAD:application1/acls/acls.json > {previous_acls}"
+    previous_acls_command = f"git show HEAD~1:application1/acls/acls.json > {previous_acls}"
 
     for file in files_list:
         if "topics.json" in file:
