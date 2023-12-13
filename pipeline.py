@@ -99,7 +99,7 @@ def find_changed_topics(source_topics, new_topics):
                 except KeyError as ke:
                     logger.error(ke)
                 try:
-                    if not diff['values_changed']["root[\'partitions_count\']"]:
+                    if diff['values_changed']["root[\'configs\'][0][\'value\']"]:
                         for change_type, details in diff.items():
                             change_dict = {
                                 "topic_name": topic_name,
@@ -116,15 +116,6 @@ def find_changed_topics(source_topics, new_topics):
                                             "value": details[change]['new_value']
                                         })
 
-                                    continue
-
-                                property_name_list = re.findall(r"\['(.*?)'\]", change)
-                                if property_name_list:
-                                    prop_name = property_name_list[0]
-                                    change_dict["changes"].append({
-                                        "name": prop_name["name"],
-                                        "value": details[change]['new_value']
-                                    })
                         changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
                     logger.error(ke)

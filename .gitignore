@@ -8,4 +8,5 @@ lib/*
 application1/acls/previous-acls.json
 application1/acls/current-acls.json
 application1/topics/previous-topics.json
-application1/topics/current-topics.json'
+application1/topics/current-topics.json
+CHANGELOG.md
