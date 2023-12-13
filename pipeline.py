@@ -131,21 +131,6 @@ def find_changed_topics(source_topics, new_topics):
     return changed_topic_names
 
 
-def extract_data(changed_topics):
-    results = []
-    for topic in changed_topics:
-        if topic["changes"]:
-            for change in topic["changes"]["changes"]:
-                property_name = change["prop_name"]
-                property_value = change["changes"]["new_value"]
-                results.append({"data": {
-                    "name": property_name,
-                    "value": property_value
-                }})
-
-    return results
-
-
 def process_changed_topics(changed_topic_names):
     for i, topic in enumerate(changed_topic_names):
         topic_name = list(topic.keys())[i]
