@@ -315,8 +315,8 @@ def delete_topic(topic_name):
     response = requests.delete(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 204:
-                logger.info(f"The topic {topic_name} has been successfully deleted")
-                f.writelines(f"{datetime.now()} - {topic_name} has been successfully deleted\n")
+            logger.info(f"The topic {topic_name} has been successfully deleted")
+            f.writelines(f"{datetime.now()} - {topic_name} has been successfully deleted\n")
         else:
             logger.error(f"The topic {topic_name} returned {str(response.status_code)} due to the following reason: {response.text}" )
             f.writelines(f"{datetime.now()} - {topic_name} attempted to be deleted but returned {str(response.status_code)} due to the following reason: {response.text}\n")
@@ -465,6 +465,24 @@ def process_connector_changes(connector_file):
             f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
 
 
+def delete_connector(connector_file):
+    # Remove a connector
+    connector_name = connector_file.split("/connectors/")[1].replace(".json","")
+    connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
+    json_file = open(connector_file)
+    json_string_template = string.Template(json_file.read())
+    json_string = json_string_template.substitute(**os.environ)
+
+    response = requests.delete(f"{connect_rest_url}/{connector_name}", headers=HEADERS)
+    with open('CHANGELOG.md', 'a') as f:
+        if response.status_code == 204:
+            logger.info(f"The connector {connector_name} has been successfully created")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully created\n")
+        else:
+            logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
+
+
 @click.command()
 @click.argument('source_branch')
 def main(source_branch):
@@ -491,8 +509,8 @@ def main(source_branch):
     current_topics_command = f"git show HEAD:application1/topics/topics.json > {current_topics}"
     previous_topics_command = f"git show HEAD:application1/topics/topics.json > {previous_topics}"
 
-    get_merged_acls_command = f"git show HEAD:application1/acls/acls.json > {current_acls}"
-    get_previous_acls_command = f"git show HEAD:application1/acls/acls.json > {previous_acls}"
+    current_acls_command = f"git show HEAD:application1/acls/acls.json > {current_acls}"
+    previous_acls_command = f"git show HEAD:application1/acls/acls.json > {previous_acls}"
 
     for file in files_list:
         if "topics.json" in file:
@@ -506,19 +524,17 @@ def main(source_branch):
             process_changed_topics(changed_topics)
 
         if "acls.json" in file:
-            subprocess.run(get_merged_acls_command, capture_output=True, shell=True)
-            subprocess.run(get_previous_acls_command, capture_output=True, shell=True)
-            with open(previous_topics, 'r') as previous_acls_file:
-                source_topics = json.load(previous_acls_file)
+            subprocess.run(current_acls_command, capture_output=True, shell=True)
+            subprocess.run(previous_acls_command, capture_output=True, shell=True)
+            with open(previous_acls, 'r') as previous_acls_file:
+                source_acls = json.load(previous_acls_file)
             with open(current_acls, 'r') as current_acls_file:
-                feature_topics = json.load(current_acls_file)
-            changed_topics = find_changed_topics(source_topics, feature_topics)
-            process_changed_topics(changed_topics)
+                feature_acls = json.load(current_acls_file)
+            changed_acls = find_changed_acls(source_acls, feature_acls)
+            add_or_remove_acls(changed_acls)
 
         if "connectors" in file:
-            g = Github(GITHUB_TOKEN)
-            repo = g.get_repo("NiyiOdumosu/kafkamanager")
-            # process_connector_changes(feature_file)
+            process_connector_changes(file)
 
 
 if __name__ == '__main__':
