@@ -17,8 +17,10 @@ HEADERS = {'Content-type': 'application/json', 'Accept': 'application/json'}
 REST_PROXY_URL = os.getenv('REST_URL')
 CLUSTER_ID = os.getenv('KAFKA_CLUSTER_ID')
 CONNECT_REST_URL = os.getenv('CONNECT_REST_URL')
-BASIC_AUTH_USER = os.getenv('BASIC_AUTH_USER')
-BASIC_AUTH_PASS = os.getenv('BASIC_AUTH_PASS')
+REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
+REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
+CONNECT_BASIC_AUTH_USER = os.getenv('CONNECT_BASIC_AUTH_USER')
+CONNECT_BASIC_AUTH_PASS = os.getenv('CONNECT_BASIC_AUTH_PASS')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -71,7 +73,6 @@ def find_changed_topics(source_topics, new_topics):
         if updated_topic:
             diff = DeepDiff(source_topic, updated_topic, ignore_order=True)
             if diff:
-                print(diff['values_changed'])
                 # Check if this is a partition change
                 try:
                     if diff['values_changed']["root[\'partitions_count\']"]:
@@ -99,7 +100,7 @@ def find_changed_topics(source_topics, new_topics):
                 except KeyError as ke:
                     logger.error(ke)
                 try:
-                    if not diff['values_changed']["root[\'partitions_count\']"]:
+                    if diff['values_changed']["root[\'configs\'][0][\'value\']"]:
                         for change_type, details in diff.items():
                             change_dict = {
                                 "topic_name": topic_name,
@@ -116,15 +117,6 @@ def find_changed_topics(source_topics, new_topics):
                                             "value": details[change]['new_value']
                                         })
 
-                                    continue
-
-                                property_name_list = re.findall(r"\['(.*?)'\]", change)
-                                if property_name_list:
-                                    prop_name = property_name_list[0]
-                                    change_dict["changes"].append({
-                                        "name": prop_name["name"],
-                                        "value": details[change]['new_value']
-                                    })
                         changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
                     logger.error(ke)
@@ -138,21 +130,6 @@ def find_changed_topics(source_topics, new_topics):
             changed_topic_names.append({topic_name: feature_topics_dict.get(topic_name), "type": "new"})
 
     return changed_topic_names
-
-
-def extract_data(changed_topics):
-    results = []
-    for topic in changed_topics:
-        if topic["changes"]:
-            for change in topic["changes"]["changes"]:
-                property_name = change["prop_name"]
-                property_value = change["changes"]["new_value"]
-                results.append({"data": {
-                    "name": property_name,
-                    "value": property_value
-                }})
-
-    return results
 
 
 def process_changed_topics(changed_topic_names):
@@ -192,7 +169,7 @@ def add_new_topic(topic):
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
     topic_json = json.dumps(topic)
 
-    response = requests.post(rest_topic_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=topic_json, headers=HEADERS)
+    response = requests.post(rest_topic_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=topic_json, headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 201:
             logger.info(f"The topic {topic['topic_name']} has been successfully created")
@@ -219,7 +196,7 @@ def update_existing_topic(topic_name, topic_config):
     Finally, it alters the topic configurations using a POST request to the Kafka REST API.
     """
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
-    response = requests.get(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
+    response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
     if response.status_code != 200:
         logger.error(f"The topic {topic_name} failed to be updated due to {response.status_code} - {response.text}")
         exit(1)
@@ -241,7 +218,7 @@ def update_topic_configs(rest_topic_url, topic_config, topic_name):
     logger.info("altering configs to " + updated_Configs)
     with open('CHANGELOG.md', 'a') as f:
         response = requests.post(f"{rest_topic_url}{topic_name}" + "/configs:alter",
-                                 auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=updated_Configs, headers=HEADERS)
+                                 auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=updated_Configs, headers=HEADERS)
         if response.status_code == 204:
             f.writelines(f"{datetime.now()} - The configs {updated_Configs} was successfully applied to {topic_name}\n")
             logger.info(f"The configs {updated_Configs} was successfully applied to {topic_name}\n")
@@ -274,7 +251,7 @@ def update_partition_count(current_topic_definition, rest_topic_url, partition_c
             logger.info(f"A requested increase of partitions for topic  {topic_name} is from "
                         f"{str(current_partitions_count)} to {str(new_partition_count)}")
             partition_response = requests.patch(f"{rest_topic_url}{topic_name}",
-                                                auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS),
+                                                auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS),
                                                 data="{\"partitions_count\":" + str(new_partition_count) + "}")
             with open('CHANGELOG.md', 'a') as f:
                 if partition_response.status_code != 200:
@@ -306,13 +283,13 @@ def delete_topic(topic_name):
     """
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    get_response = requests.get(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
+    get_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
     if get_response.status_code == 200:
         logger.info(f"Response code is {str(get_response.status_code)}")
     else:
         logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.text)}" )
 
-    response = requests.delete(rest_topic_url + topic_name, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS))
+    response = requests.delete(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 204:
             logger.info(f"The topic {topic_name} has been successfully deleted")
@@ -387,7 +364,7 @@ def add_new_acl(acl):
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
     acl_json = json.dumps(acl)
-    response = requests.post(rest_acl_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), data=acl_json, headers=HEADERS)
+    response = requests.post(rest_acl_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=acl_json, headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 201:
             logger.info(f"The acl {acl_json} has been successfully created")
@@ -412,7 +389,7 @@ def delete_acl(acl):
     If the topic exists, it proceeds to delete the topic using a DELETE request.
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
-    response = requests.delete(rest_acl_url, auth=(BASIC_AUTH_USER, BASIC_AUTH_PASS), params=acl)
+    response = requests.delete(rest_acl_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), params=acl)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 200:
             logger.info(f"The acl {acl} has been successfully deleted")
@@ -426,7 +403,6 @@ def add_or_remove_acls(changed_acls):
     for i, acls in enumerate(changed_acls):
         acl_configs = list(acls.values())
         if acls['type'] == 'new':
-            print(acl_configs[0])
             add_new_acl(acl_configs[0])
         elif acls['type'] == 'removed':
             delete_acl(acl_configs[0])
@@ -455,7 +431,7 @@ def process_connector_changes(connector_file):
     json_string_template = string.Template(json_file.read())
     json_string = json_string_template.substitute(**os.environ)
 
-    response = requests.put(connect_rest_url, data=json_string, headers=HEADERS)
+    response = requests.put(connect_rest_url, data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 201:
             logger.info(f"The connector {connector_name} has been successfully created")
@@ -473,7 +449,7 @@ def delete_connector(connector_file):
     json_string_template = string.Template(json_file.read())
     json_string = json_string_template.substitute(**os.environ)
 
-    response = requests.delete(f"{connect_rest_url}/{connector_name}", headers=HEADERS)
+    response = requests.delete(f"{connect_rest_url}/{connector_name}", auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 204:
             logger.info(f"The connector {connector_name} has been successfully created")
@@ -487,7 +463,7 @@ def delete_connector(connector_file):
 @click.argument('source_branch')
 def main(source_branch):
 
-    subprocess.run(['git', 'checkout', source_branch]).stdout
+    # subprocess.run(['git', 'checkout', source_branch]).stdout
     latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], capture_output=True).stdout
     previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1'], capture_output=True).stdout
 
@@ -498,7 +474,6 @@ def main(source_branch):
     files_string = files.decode('utf-8')
     pattern = re.compile(r'([AMD])\s+(.+)')
     files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
-    print(files_list)
 
     current_topics = 'application1/topics/current-topics.json'
     previous_topics = 'application1/topics/previous-topics.json'
@@ -507,10 +482,10 @@ def main(source_branch):
     previous_acls = 'application1/acls/previous-acls.json'
 
     current_topics_command = f"git show HEAD:application1/topics/topics.json > {current_topics}"
-    previous_topics_command = f"git show HEAD:application1/topics/topics.json > {previous_topics}"
+    previous_topics_command = f"git show HEAD~1:application1/topics/topics.json > {previous_topics}"
 
     current_acls_command = f"git show HEAD:application1/acls/acls.json > {current_acls}"
-    previous_acls_command = f"git show HEAD:application1/acls/acls.json > {previous_acls}"
+    previous_acls_command = f"git show HEAD~1:application1/acls/acls.json > {previous_acls}"
 
     for file in files_list:
         if "topics.json" in file:
@@ -533,8 +508,12 @@ def main(source_branch):
             changed_acls = find_changed_acls(source_acls, feature_acls)
             add_or_remove_acls(changed_acls)
 
-        if "connectors" in file:
+        if ("connectors" in file) and ('D ' in file):
+            delete_connector(file)
+        elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
             process_connector_changes(file)
+        else:
+            logger.info("No Kafka resource changes were detected")
 
 
 if __name__ == '__main__':

@@ -21,6 +21,9 @@ pipeline {
 
                     env.kafka_user="rahul"
 
+                    git show HEAD:application1/topics/topics.json > current.json
+                    git show HEAD^:application1/topics/topics.json > previous.json
+
                     sh ('python3 pipeline.py application1/acls/acls.json  $SOURCE_BRANCH application1/acls/acls.json $TARGET_BRANCH')
 
                    
