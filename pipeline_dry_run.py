@@ -1,6 +1,7 @@
 from github import Github
 from deepdiff import DeepDiff
 
+import click
 import logging
 import os
 import requests
@@ -403,15 +404,25 @@ def process_connector_changes(connector_file):
     logger.info(f"The connector {connector_name} will be added once the PR is merged with the following configs {json_string}")
 
 
-if __name__ == "__main__":
-
+@click.command()
+@click.argument('pull_request')
+def main(pull_request):
     source_file = "application1/topics/topics.json"
     source_branch = "main"
 
     feature_file = "application1/connectors/connect-datagen-src.json"
     feature_branch = "test"
 
-    repo = "NiyiOdumosu/kafkamanager"
+    g = Github(GITHUB_TOKEN)
+    repo = g.get_repo("NiyiOdumosu/kafkamanager")
+    prs = repo.get_pull(9)
+    print(prs.changed_files)
+
+    # feature_topic_content = repo.get_contents(feature_file, ref=feature_branch)
+    # source_topic_content = repo.get_contents(source_file, ref=source_branch)
+    # source_topics = json.loads(source_topic_content.decoded_content)
+    # feature_topics = json.loads(feature_topic_content.decoded_content)
+
     source_content, feature_content = get_content_from_branches(source_file, source_branch, feature_file, feature_branch)
     if "topic" in (source_file and feature_file):
         changed_topics = find_changed_topics(source_content, feature_content)
@@ -432,3 +443,6 @@ if __name__ == "__main__":
         repo = g.get_repo(repo)
         process_connector_changes(feature_file)
 
+
+if __name__ == "__main__":
+    main()
