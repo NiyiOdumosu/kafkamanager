@@ -71,7 +71,6 @@ def find_changed_topics(source_topics, new_topics):
         if updated_topic:
             diff = DeepDiff(source_topic, updated_topic, ignore_order=True)
             if diff:
-                print(diff['values_changed'])
                 # Check if this is a partition change
                 try:
                     if diff['values_changed']["root[\'partitions_count\']"]:
@@ -462,7 +461,7 @@ def delete_connector(connector_file):
 @click.argument('source_branch')
 def main(source_branch):
 
-    subprocess.run(['git', 'checkout', source_branch]).stdout
+    # subprocess.run(['git', 'checkout', source_branch]).stdout
     latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], capture_output=True).stdout
     previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1'], capture_output=True).stdout
 
@@ -473,7 +472,6 @@ def main(source_branch):
     files_string = files.decode('utf-8')
     pattern = re.compile(r'([AMD])\s+(.+)')
     files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
-    print(files_list)
 
     current_topics = 'application1/topics/current-topics.json'
     previous_topics = 'application1/topics/previous-topics.json'
@@ -508,7 +506,9 @@ def main(source_branch):
             changed_acls = find_changed_acls(source_acls, feature_acls)
             add_or_remove_acls(changed_acls)
 
-        if "connectors" in file:
+        if ("connectors" in file) and ('D ' in file):
+            delete_connector(file)
+        else:
             process_connector_changes(file)
 
 
