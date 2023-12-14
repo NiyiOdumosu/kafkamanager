@@ -508,8 +508,10 @@ def main(source_branch):
 
         if ("connectors" in file) and ('D ' in file):
             delete_connector(file)
-        else:
+        elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
             process_connector_changes(file)
+        else:
+            logger.info("No Kafka resource changes were detected")
 
 
 if __name__ == '__main__':
