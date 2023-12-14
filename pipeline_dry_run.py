@@ -415,7 +415,7 @@ def main(pull_request):
 
     g = Github(GITHUB_TOKEN)
     repo = g.get_repo("NiyiOdumosu/kafkamanager")
-    prs = repo.get_pull(9)
+    prs = repo.get_pull(int(pull_request))
     print(prs.changed_files)
 
     # feature_topic_content = repo.get_contents(feature_file, ref=feature_branch)

@@ -464,6 +464,7 @@ def delete_connector(connector_file):
 def main(source_branch):
 
     # subprocess.run(['git', 'checkout', source_branch]).stdout
+    subprocess.run(['git', 'pull', 'origin', source_branch]).stdout
     latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], capture_output=True).stdout
     previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1'], capture_output=True).stdout
 
