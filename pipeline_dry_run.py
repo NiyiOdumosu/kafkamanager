@@ -35,7 +35,7 @@ def get_files(pr_id):
     for commit in commits:
         files = commit.files
         for file in files:
-            files_list.append(file)
+            files_list.append(f"{file.filename}-{file.status}")
             files_set = set(files_list)
 
     return repo, files_set, head_branch, base_branch
@@ -404,18 +404,22 @@ def main(pr_id):
     repo, files_set, head_branch, base_branch = get_files(pr_id)
     print(files_set)
     for file in files_set:
-        if "topics.json" in file.filename:
-            head_content, base_content = get_content_from_branches(repo, file.filename, head_branch, base_branch)
+        if "topics.json" in file:
+            filename = file.split("-")[0]
+            head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
             changed_topics = find_changed_topics(head_content, head_content)
             process_changed_topics(changed_topics)
-        if "acls.json" in file.filename:
-            head_content, base_content = get_content_from_branches(repo, file.filename, head_branch, base_branch)
+        if "acls.json" in file:
+            filename = file.split("-")[0]
+            head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
             changed_acls = find_changed_acls(head_content, head_content)
             add_or_remove_acls(changed_acls)
-        if ("connector" in file.filename) and ('removed' in file.status):
-            delete_connector(file.filename)
-        if ("connector" in file and 'modified' in file.status) or ("connectors" in file and 'added ' in file):
-            process_connector_changes(file.filename)
+        if ("connector" in file) and ('removed' in file):
+            filename = file.split("-")[0]
+            delete_connector(filename)
+        if ("connector" in file and 'modified' in file) or ("connectors" in file and 'added' in file) or ("connectors" in file and 'renamed' in file):
+            filename = file.split("-")[0]
+            process_connector_changes(filename)
 
 
 if __name__ == "__main__":
