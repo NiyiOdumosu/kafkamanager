@@ -166,7 +166,16 @@ def add_new_topic(topic):
     - topic (dict): Dictionary representing the configuration of the new Kafka topic.
 
     """
+    topic_name = topic["topic_name"]
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
+
+    get_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+    if get_response.status_code != 200:
+        logger.info(f"Topic does not already exist. Please proceed with creating the topic")
+    else:
+        logger.error(f"Topic already exist. Will not create a the topic {topic_name}")
+        exit(1)
+
     topic_json = json.dumps(topic)
 
     response = requests.post(rest_topic_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=topic_json, headers=HEADERS)

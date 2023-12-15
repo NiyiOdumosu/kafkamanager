@@ -8,7 +8,6 @@ import requests
 import json
 import re
 import string
-import subprocess
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
@@ -86,52 +85,53 @@ def find_changed_topics(source_topics, new_topics):
         if updated_topic:
             diff = DeepDiff(source_topic, updated_topic, ignore_order=True)
             if diff:
-                print(diff['values_changed'])
                 # Check if this is a partition change
                 try:
-                    if diff['values_changed'] == { "root[\'partitions_count\']": diff['values_changed']["root[\'partitions_count\']"]}:
+                    if diff['values_changed']["root[\'partitions_count\']"]:
                         for change_type, details in diff.items():
                             change_dict = {
                                 "topic_name": topic_name,
                                 "changes": []
                             }
                             for change in details:
-                                configs_changes = re.findall(r"\['(.*?)'\]", change)
-                                change_dict["changes"].append({
-                                    configs_changes[0]: details[change]['new_value']
-                                })
+                                if change == "root[\'partitions_count\']":
+                                    configs_changes = re.findall(r"\['(.*?)'\]", change)
+                                    change_dict["changes"].append({
+                                        configs_changes[0]: details[change]['new_value']
+                                    })
+                                else:
+                                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                                    if configs_changes:
+                                        for index in configs_changes:
+                                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                                            change_dict["changes"].append({
+                                                "name": prop_name["name"],
+                                                "value": details[change]['new_value']
+                                            })
                         changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
                     logger.error(ke)
+                try:
+                    if diff['values_changed']["root[\'configs\'][0][\'value\']"]:
+                        for change_type, details in diff.items():
+                            change_dict = {
+                                "topic_name": topic_name,
+                                "changes": []
+                            }
 
-                for change_type, details in diff.items():
-                    change_dict = {
-                        "topic_name": topic_name,
-                        "changes": []
-                    }
+                            for change in details:
+                                configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                                if configs_changes:
+                                    for index in configs_changes:
+                                        prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                                        change_dict["changes"].append({
+                                            "name": prop_name["name"],
+                                            "value": details[change]['new_value']
+                                        })
 
-                    for change in details:
-                        configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                        if configs_changes:
-                            for index in configs_changes:
-                                # config_index = int(configs_changes[int(index)])
-                                prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                                change_dict["changes"].append({
-                                    "name": prop_name["name"],
-                                    "value": details[change]['new_value']
-                                })
-
-                            continue
-
-                        property_name_list = re.findall(r"\['(.*?)'\]", change)
-                        if property_name_list:
-                            prop_name = property_name_list[0]
-                            change_dict["changes"].append({
-                                "name": prop_name["name"],
-                                "value": details[change]['new_value']
-                            })
-
-                changed_topic_names.append({"type": "update", "changes": change_dict})
+                        changed_topic_names.append({"type": "update", "changes": change_dict})
+                except KeyError as ke:
+                    logger.error(ke)
         else:
             # Topic was removed
             changed_topic_names.append({topic_name: source_topics_dict.get(topic_name), "type": "removed"})
@@ -144,21 +144,6 @@ def find_changed_topics(source_topics, new_topics):
     return changed_topic_names
 
 
-def extract_data(changed_topics):
-    results = []
-    for topic in changed_topics:
-        if topic["changes"]:
-            for change in topic["changes"]["changes"]:
-                property_name = change["prop_name"]
-                property_value = change["changes"]["new_value"]
-                results.append({"data": {
-                    "name": property_name,
-                    "value": property_value
-                }})
-
-    return results
-
-
 def process_changed_topics(changed_topic_names):
     for i, topic in enumerate(changed_topic_names):
         topic_name = list(topic.keys())[i]
@@ -169,8 +154,6 @@ def process_changed_topics(changed_topic_names):
             update_existing_topic(topic['changes']['topic_name'], topic['changes']['changes'])
         else:
             delete_topic(topic_name)
-
-
 
 
 
@@ -229,10 +212,6 @@ def update_existing_topic(topic_name, topic_config):
     else:
         updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
         logger.info(f"The topic {topic_name} will be updated with the following topic configs {updated_Configs} once the PR is merged")
-
-
-
-
 
 
 def update_partition_count(current_topic_definition, rest_topic_url, partition_count, topic_name):
@@ -313,25 +292,19 @@ def find_changed_acls(source_acls, feature_acls):
 
     changed_acls = []
     # Check for changes and deletions
-    for topic_name, source_topic in source_acls_dict.items():
-        feature_topic = feature_acls_dict.get(topic_name)
-        if feature_topic:
-            diff = DeepDiff(source_topic, feature_topic, ignore_order=True)
-            if diff:
-                changed_acls.append({topic_name: diff, "type": "update"})
-                logger.info(f"The following topic will be updated : {topic_name}")
-        else:
-            # Topic was removed
-            changed_acls.append({topic_name: source_acls_dict.get(topic_name), "type": "removed"})
-            logger.info(f"The following topic will be removed : {topic_name}")
+    for acl_name, source_acl in source_acls_dict.items():
+        feature_acl = feature_acls_dict.get(acl_name)
+        if not feature_acl:
+            # ACL was removed
+            changed_acls.append({acl_name: source_acls_dict.get(acl_name), "type": "removed"})
+            logger.info(f"The following acl will be removed : {acl_name}")
 
     # Check for new additions
-    for topic_name in feature_acls_dict:
-        if topic_name not in source_acls_dict.keys():
-            changed_acls.append({topic_name: feature_acls_dict.get(topic_name), "type": "new"})
-            logger.info(f"The following topic will be added : {topic_name}")
+    for acl_name in feature_acls_dict:
+        if acl_name not in source_acls_dict.keys():
+            changed_acls.append({acl_name: feature_acls_dict.get(acl_name), "type": "new"})
+            logger.info(f"The following acl will be added : {acl_name}")
     return changed_acls
-
 
 
 def build_acl_rest_url(base_url, cluster_id):
@@ -346,6 +319,7 @@ def build_acl_rest_url(base_url, cluster_id):
     str: The constructed REST API URL for Kafka topics.
     """
     return f'{base_url}/v3/clusters/{cluster_id}/acls/'
+
 
 def add_new_acl(acl):
     """
@@ -382,19 +356,15 @@ def delete_acl(acl):
         logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
 
 
-def process_changed_acls(changed_acls):
-    for i, topic in enumerate(changed_acls):
-        topic_name = list(topic.keys())[i]
-        topic_configs = list(topic.values())[i]
-        if topic['type'] == 'new':
-            add_new_acl(topic_configs)
-        elif topic['type'] == 'update':
-            for k, v in topic.items():
-                print(f"{k} : {v}")
-            print(topic_configs)
-            update_existing_topic(topic_name, topic_configs)
+def add_or_remove_acls(changed_acls):
+    for i, acls in enumerate(changed_acls):
+        acl_configs = list(acls.values())
+        if acls['type'] == 'new':
+            add_new_acl(acl_configs[0])
+        elif acls['type'] == 'removed':
+            delete_acl(acl_configs[0])
         else:
-            delete_acl(topic_configs)
+            continue
 
 
 def build_connect_rest_url(base_url, connector_name):
@@ -413,13 +383,16 @@ def build_connect_rest_url(base_url, connector_name):
 def process_connector_changes(connector_file):
     # Add a new connector
     connector_name = connector_file.split("/connectors/")[1].replace(".json","")
-    connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
     json_file = open(connector_file)
     json_string_template = string.Template(json_file.read())
     json_string = json_string_template.substitute(**os.environ)
 
     logger.info(f"The connector {connector_name} will be added once the PR is merged with the following configs {json_string}")
 
+def delete_connector(connector_file):
+    # Remove a connector
+    connector_name = connector_file.split("/connectors/")[1].replace(".json","")
+    logger.info(f"The connector {connector_name} will be deleted once the PR is merged")
 
 @click.command()
 @click.argument('pr_id')
@@ -435,7 +408,7 @@ def main(pr_id):
         if "acls.json" in file:
             head_content, base_content = get_content_from_branches(repo, file, head_branch, base_branch)
             changed_acls = find_changed_acls(head_content, head_content)
-            process_changed_acls(changed_acls)
+            add_or_remove_acls(changed_acls)
         if "connector" in file:
             process_connector_changes(file)
 
