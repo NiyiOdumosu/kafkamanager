@@ -5,6 +5,6 @@
   "output.data.format" : "JSON",
   "quickstart" : "USERS",
   "tasks.max" : "1",
-  "user":"user1"
+  "user":"{kafka_user}"
 
 }
