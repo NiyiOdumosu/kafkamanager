@@ -16,13 +16,32 @@ HEADERS = {'Content-type': 'application/json', 'Accept': 'application/json'}
 REST_PROXY_URL = os.getenv('REST_URL')
 CLUSTER_ID = os.getenv('KAFKA_CLUSTER_ID')
 CONNECT_REST_URL = os.getenv('CONNECT_REST_URL')
+REPO = os.getenv('REPO')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_content_from_branches(repo, source_file, source_branch, feature_file, feature_branch):
+def get_files(pr_id):
+    g = Github(GITHUB_TOKEN)
+    repo = g.get_repo(REPO)
+
+    pull_request = repo.get_pull(int(pr_id))
+    commits = pull_request.get_commits()
+
+    head_branch = pull_request.head.ref
+    base_branch = pull_request.base.ref
+    files_list = []
+    for commit in commits:
+        files = commit.files
+        for file in files:
+            filename = file.filename
+            files_list.append(filename)
+    return repo, files_list, head_branch, base_branch
+
+
+def get_content_from_branches(repo, filename, head_branch, base_branch):
     """
     Retrieve topic configurations from 'main' and 'test' branches of the Kafka Manager repository.
 
@@ -37,14 +56,13 @@ def get_content_from_branches(repo, source_file, source_branch, feature_file, fe
     Exception: If there is an error in connecting to the repository or retrieving the topic configurations.
     """
     try:
-        g = Github(GITHUB_TOKEN)
-        repo = g.get_repo("NiyiOdumosu/kafkamanager")
-        feature_topic_content = repo.get_contents(feature_file, ref=feature_branch)
-        source_topic_content = repo.get_contents(source_file, ref=source_branch)
-        source_topics = json.loads(source_topic_content.decoded_content)
-        feature_topics = json.loads(feature_topic_content.decoded_content)
 
-        return source_topics, feature_topics
+        head_file_content = repo.get_contents(filename, ref=head_branch)
+        base_file_content = repo.get_contents(filename, ref=base_branch)
+        head_file_content_json = json.loads(base_file_content.decoded_content)
+        base_file_content_json = json.loads(head_file_content.decoded_content)
+
+        return head_file_content_json, base_file_content_json
     except Exception as e:
         logger.error(f"Error getting latest commit diff: {e}")
         raise
@@ -364,7 +382,6 @@ def delete_acl(acl):
         logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
 
 
-
 def process_changed_acls(changed_acls):
     for i, topic in enumerate(changed_acls):
         topic_name = list(topic.keys())[i]
@@ -405,43 +422,22 @@ def process_connector_changes(connector_file):
 
 
 @click.command()
-@click.argument('pull_request')
-def main(pull_request):
-    source_file = "application1/topics/topics.json"
-    source_branch = "main"
+@click.argument('pr_id')
+def main(pr_id):
 
-    feature_file = "application1/connectors/connect-datagen-src.json"
-    feature_branch = "test"
+    repo, files_list, head_branch, base_branch = get_files(pr_id)
 
-    g = Github(GITHUB_TOKEN)
-    repo = g.get_repo("NiyiOdumosu/kafkamanager")
-    prs = repo.get_pull(int(pull_request))
-    print(prs.changed_files)
-
-    # feature_topic_content = repo.get_contents(feature_file, ref=feature_branch)
-    # source_topic_content = repo.get_contents(source_file, ref=source_branch)
-    # source_topics = json.loads(source_topic_content.decoded_content)
-    # feature_topics = json.loads(feature_topic_content.decoded_content)
-
-    source_content, feature_content = get_content_from_branches(source_file, source_branch, feature_file, feature_branch)
-    if "topic" in (source_file and feature_file):
-        changed_topics = find_changed_topics(source_content, feature_content)
-        process_changed_topics(changed_topics)
-
-    if "acl" in (source_file and feature_file):
-        changed_acls = find_changed_acls(source_content, feature_content)
-        process_changed_acls(changed_topics)
-
-    subprocess.run(['git', 'checkout', feature_branch]).stdout
-    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD']).stdout
-    if latest_sha is not None:
-        output = subprocess.run(['git', 'diff', '--name-status', str(latest_sha)])
-        print(output.stdout)
-
-    if "connector" in feature_file:
-        g = Github(GITHUB_TOKEN)
-        repo = g.get_repo(repo)
-        process_connector_changes(feature_file)
+    for file in files_list:
+        if "topics.json" in file:
+            head_content, base_content = get_content_from_branches(repo, file, head_branch, base_branch)
+            changed_topics = find_changed_topics(head_content, head_content)
+            process_changed_topics(changed_topics)
+        if "acls.json" in file:
+            head_content, base_content = get_content_from_branches(repo, file, head_branch, base_branch)
+            changed_acls = find_changed_acls(head_content, head_content)
+            process_changed_acls(changed_acls)
+        if "connector" in file:
+            process_connector_changes(file)
 
 
 if __name__ == "__main__":
