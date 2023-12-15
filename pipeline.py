@@ -1,6 +1,7 @@
 from github import Github
 from deepdiff import DeepDiff
 from datetime import datetime
+from subprocess import PIPE
 
 import click
 import json
@@ -166,7 +167,16 @@ def add_new_topic(topic):
     - topic (dict): Dictionary representing the configuration of the new Kafka topic.
 
     """
+    topic_name = topic["topic_name"]
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
+
+    get_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+    if get_response.status_code != 200:
+        logger.info(f"Topic does not already exist. Please proceed with creating the topic")
+    else:
+        logger.error(f"Topic already exist. Will not create a the topic {topic_name}")
+        exit(1)
+
     topic_json = json.dumps(topic)
 
     response = requests.post(rest_topic_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=topic_json, headers=HEADERS)
@@ -464,13 +474,16 @@ def delete_connector(connector_file):
 def main(source_branch):
 
     # subprocess.run(['git', 'checkout', source_branch]).stdout
-    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], capture_output=True).stdout
-    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1'], capture_output=True).stdout
+    subprocess.run(['git', 'pull', 'origin', source_branch]).stdout
+    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], stdout=PIPE, stderr=PIPE).stdout
+    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1'], stdout=PIPE, stderr=PIPE).stdout
 
+    print(latest_sha)
+    print(previous_sha)
     latest_commit = latest_sha.decode('utf-8').rstrip('\n')
     previous_commit = previous_sha.decode('utf-8').rstrip('\n')
 
-    files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], capture_output=True).stdout
+    files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], stdout=PIPE, stderr=PIPE).stdout
     files_string = files.decode('utf-8')
     pattern = re.compile(r'([AMD])\s+(.+)')
     files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
@@ -489,8 +502,8 @@ def main(source_branch):
 
     for file in files_list:
         if "topics.json" in file:
-            subprocess.run(current_topics_command, capture_output=True, shell=True)
-            subprocess.run(previous_topics_command, capture_output=True, shell=True)
+            subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
             with open(previous_topics, 'r') as previous_acls_file:
                 source_topics = json.load(previous_acls_file)
             with open(current_topics, 'r') as current_acls_file:
@@ -499,8 +512,8 @@ def main(source_branch):
             process_changed_topics(changed_topics)
 
         if "acls.json" in file:
-            subprocess.run(current_acls_command, capture_output=True, shell=True)
-            subprocess.run(previous_acls_command, capture_output=True, shell=True)
+            subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
             with open(previous_acls, 'r') as previous_acls_file:
                 source_acls = json.load(previous_acls_file)
             with open(current_acls, 'r') as current_acls_file:
@@ -509,9 +522,11 @@ def main(source_branch):
             add_or_remove_acls(changed_acls)
 
         if ("connectors" in file) and ('D ' in file):
-            delete_connector(file)
+            filename = file.split(" ")[1]
+            delete_connector(filename)
         elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
-            process_connector_changes(file)
+            filename = file.split(" ")[1]
+            process_connector_changes(filename)
         else:
             logger.info("No Kafka resource changes were detected")
 
