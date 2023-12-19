@@ -473,7 +473,6 @@ def main():
     latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], stdout=PIPE, stderr=PIPE).stdout
     previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1',], stdout=PIPE, stderr=PIPE).stdout
 
-
     latest_commit = latest_sha.decode('utf-8').rstrip('\n')
     previous_commit = previous_sha.decode('utf-8').rstrip('\n')
 
@@ -494,35 +493,38 @@ def main():
     current_acls_command = f"git show HEAD:application1/acls/acls.json > {current_acls}"
     previous_acls_command = f"git show HEAD~1:application1/acls/acls.json > {previous_acls}"
 
-    for file in files_list:
-        if "topics.json" in file:
-            subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
-            subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
-            with open(previous_topics, 'r') as previous_acls_file:
-                source_topics = json.load(previous_acls_file)
-            with open(current_topics, 'r') as current_acls_file:
-                feature_topics = json.load(current_acls_file)
-            changed_topics = find_changed_topics(source_topics, feature_topics)
-            process_changed_topics(changed_topics)
+    try:
+        for file in files_list:
+            if "topics.json" in file:
+                subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+                subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+                with open(previous_topics, 'r') as previous_topics_file:
+                    source_topics = json.load(previous_topics_file)
+                with open(current_topics, 'r') as current_topics_file:
+                    feature_topics = json.load(current_topics_file)
+                changed_topics = find_changed_topics(source_topics, feature_topics)
+                process_changed_topics(changed_topics)
 
-        if "acls.json" in file:
-            subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
-            subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
-            with open(previous_acls, 'r') as previous_acls_file:
-                source_acls = json.load(previous_acls_file)
-            with open(current_acls, 'r') as current_acls_file:
-                feature_acls = json.load(current_acls_file)
-            changed_acls = find_changed_acls(source_acls, feature_acls)
-            add_or_remove_acls(changed_acls)
+            if "acls.json" in file:
+                subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+                subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+                with open(previous_acls, 'r') as previous_acls_file:
+                    source_acls = json.load(previous_acls_file)
+                with open(current_acls, 'r') as current_acls_file:
+                    feature_acls = json.load(current_acls_file)
+                changed_acls = find_changed_acls(source_acls, feature_acls)
+                add_or_remove_acls(changed_acls)
 
-        if ("connectors" in file) and ('D ' in file):
-            filename = file.split(" ")[1]
-            delete_connector(filename)
-        elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
-            filename = file.split(" ")[1]
-            process_connector_changes(filename)
-        else:
-            logger.info("No Kafka resource changes were detected")
+            if ("connectors" in file) and ('D ' in file):
+                filename = file.split(" ")[1]
+                delete_connector(filename)
+            elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
+                filename = file.split(" ")[1]
+                process_connector_changes(filename)
+            else:
+                logger.info("No Kafka resource changes were detected")
+    except json.decoder.JSONDecodeError as error:
+        logger.error(error)
 
 
 if __name__ == '__main__':
