@@ -493,8 +493,8 @@ def main():
     current_acls_command = f"git show HEAD:application1/acls/acls.json > {current_acls}"
     previous_acls_command = f"git show HEAD~1:application1/acls/acls.json > {previous_acls}"
 
-    try:
-        for file in files_list:
+    for file in files_list:
+        try:
             if "topics.json" in file:
                 subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
                 subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
@@ -504,7 +504,10 @@ def main():
                     feature_topics = json.load(current_topics_file)
                 changed_topics = find_changed_topics(source_topics, feature_topics)
                 process_changed_topics(changed_topics)
+        except json.decoder.JSONDecodeError as error:
+            logger.error(error)
 
+        try:
             if "acls.json" in file:
                 subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
                 subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
@@ -514,17 +517,18 @@ def main():
                     feature_acls = json.load(current_acls_file)
                 changed_acls = find_changed_acls(source_acls, feature_acls)
                 add_or_remove_acls(changed_acls)
+        except json.decoder.JSONDecodeError as error:
+            logger.error(error)
 
-            if ("connectors" in file) and ('D ' in file):
-                filename = file.split(" ")[1]
-                delete_connector(filename)
-            elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
-                filename = file.split(" ")[1]
-                process_connector_changes(filename)
-            else:
-                logger.info("No Kafka resource changes were detected")
-    except json.decoder.JSONDecodeError as error:
-        logger.error(error)
+        if ("connectors" in file) and ('D ' in file):
+            filename = file.split(" ")[1]
+            delete_connector(filename)
+        elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
+            filename = file.split(" ")[1]
+            process_connector_changes(filename)
+        else:
+            logger.info("No Kafka resource changes were detected")
+
 
 
 if __name__ == '__main__':

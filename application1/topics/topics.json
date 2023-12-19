@@ -73,30 +73,5 @@
                 }
             ]
         }
-    },
-    {
-        "topic_e": {
-            "topic_name": "topic_e",
-            "partitions_count": "7",
-            "replication_factor": "1",
-            "configs": [
-                {
-                    "name": "cleanup.policy",
-                    "value": "delete"
-                },
-                {
-                    "name": "compression.type",
-                    "value": "producer"
-                },
-                {
-                    "name": "retention.ms",
-                    "value": 86400000
-                },
-                {
-                    "name": "max.message.bytes",
-                    "value": 1048588
-                }
-            ]
-        }
     }
 ]
