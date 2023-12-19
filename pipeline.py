@@ -488,38 +488,38 @@ def main():
     previous_acls = 'application1/acls/previous-acls.json'
 
     for file in files_list:
-        try:
-            if "topics.json" in file:
-                filename = file.split(" ")[1]
-                current_topics_command = f"git show HEAD:{filename} > {current_topics}"
-                previous_topics_command = f"git show HEAD~1:{filename} > {previous_topics}"
+        if "topics.json" in file:
+            filename = file.split(" ")[1]
+            current_topics_command = f"git show HEAD:{filename} > {current_topics}"
+            previous_topics_command = f"git show HEAD~1:{filename} > {previous_topics}"
 
-                subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
-                subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            try:
                 with open(previous_topics, 'r') as previous_topics_file:
                     source_topics = json.load(previous_topics_file)
                 with open(current_topics, 'r') as current_topics_file:
                     feature_topics = json.load(current_topics_file)
-                changed_topics = find_changed_topics(source_topics, feature_topics)
-                process_changed_topics(changed_topics)
-        except json.decoder.JSONDecodeError as error:
-            logger.error(error)
+            except json.decoder.JSONDecodeError as error:
+                logger.error(error)
+            changed_topics = find_changed_topics(source_topics, feature_topics)
+            process_changed_topics(changed_topics)
 
-        try:
-            if "acls.json" in file:
-                filename = file.split(" ")[1]
-                current_acls_command = f"git show HEAD:{filename} > {current_acls}"
-                previous_acls_command = f"git show HEAD~1:{filename} > {previous_acls}"
-                subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
-                subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+        if "acls.json" in file:
+            filename = file.split(" ")[1]
+            current_acls_command = f"git show HEAD:{filename} > {current_acls}"
+            previous_acls_command = f"git show HEAD~1:{filename} > {previous_acls}"
+            subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            try:
                 with open(previous_acls, 'r') as previous_acls_file:
                     source_acls = json.load(previous_acls_file)
                 with open(current_acls, 'r') as current_acls_file:
                     feature_acls = json.load(current_acls_file)
-                changed_acls = find_changed_acls(source_acls, feature_acls)
-                add_or_remove_acls(changed_acls)
-        except json.decoder.JSONDecodeError as error:
-            logger.error(error)
+            except json.decoder.JSONDecodeError as error:
+                logger.error(error)
+            changed_acls = find_changed_acls(source_acls, feature_acls)
+            add_or_remove_acls(changed_acls)
 
         if ("connectors" in file) and ('D ' in file):
             filename = file.split(" ")[1]

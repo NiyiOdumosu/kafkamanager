@@ -1,0 +1,27 @@
+[
+    {
+        "topic_test": {
+            "topic_name": "topic_test",
+            "partitions_count": "4",
+            "replication_factor": "1",
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "delete"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "producer"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 86400000
+                },
+                {
+                    "name": "max.message.bytes",
+                    "value": 1048588
+                }
+            ]
+        }
+    }
+]
