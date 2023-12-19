@@ -487,15 +487,13 @@ def main():
     current_acls = 'application1/acls/current-acls.json'
     previous_acls = 'application1/acls/previous-acls.json'
 
-    current_topics_command = f"git show HEAD:application1/topics/topics.json > {current_topics}"
-    previous_topics_command = f"git show HEAD~1:application1/topics/topics.json > {previous_topics}"
-
-    current_acls_command = f"git show HEAD:application1/acls/acls.json > {current_acls}"
-    previous_acls_command = f"git show HEAD~1:application1/acls/acls.json > {previous_acls}"
-
     for file in files_list:
         try:
             if "topics.json" in file:
+                filename = file.split(" ")[1]
+                current_topics_command = f"git show HEAD:{filename} > {current_topics}"
+                previous_topics_command = f"git show HEAD~1:{filename} > {previous_topics}"
+
                 subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
                 subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
                 with open(previous_topics, 'r') as previous_topics_file:
@@ -509,6 +507,9 @@ def main():
 
         try:
             if "acls.json" in file:
+                filename = file.split(" ")[1]
+                current_acls_command = f"git show HEAD:{filename} > {current_acls}"
+                previous_acls_command = f"git show HEAD~1:{filename} > {previous_acls}"
                 subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
                 subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
                 with open(previous_acls, 'r') as previous_acls_file:
@@ -528,7 +529,6 @@ def main():
             process_connector_changes(filename)
         else:
             logger.info("No Kafka resource changes were detected")
-
 
 
 if __name__ == '__main__':
