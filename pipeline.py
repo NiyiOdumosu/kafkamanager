@@ -469,17 +469,11 @@ def delete_connector(connector_file):
             f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
 
 
-@click.command()
-@click.argument('source_branch')
-def main(source_branch):
-
-    # subprocess.run(['git', 'checkout', source_branch]).stdout
-    subprocess.run(['git', 'pull', 'origin', source_branch]).stdout
+def main():
     latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], stdout=PIPE, stderr=PIPE).stdout
-    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1'], stdout=PIPE, stderr=PIPE).stdout
+    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1',], stdout=PIPE, stderr=PIPE).stdout
 
-    print(latest_sha)
-    print(previous_sha)
+
     latest_commit = latest_sha.decode('utf-8').rstrip('\n')
     previous_commit = previous_sha.decode('utf-8').rstrip('\n')
 
