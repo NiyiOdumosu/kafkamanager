@@ -456,7 +456,7 @@ def delete_connector(connector_file):
     connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
     json_file = open(connector_file)
     json_string_template = string.Template(json_file.read())
-    json_string = json_string_template.substitute(**os.environ)
+    # json_string = json_string_template.substitute(**os.environ)
 
     response = requests.delete(f"{connect_rest_url}/{connector_name}", auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
@@ -497,10 +497,17 @@ def main():
             try:
                 with open(previous_topics, 'r') as previous_topics_file:
                     source_topics = json.load(previous_topics_file)
+            except json.decoder.JSONDecodeError as error:
+                # if this is the first topic(s) for an application, we create an empty list for the previous topics
+                logger.error(error)
+                source_topics = []
+            try:
                 with open(current_topics, 'r') as current_topics_file:
                     feature_topics = json.load(current_topics_file)
             except json.decoder.JSONDecodeError as error:
+                # if one deletes all the topic(s) for an application, we create an empty list for the current topics
                 logger.error(error)
+                feature_topics = []
             changed_topics = find_changed_topics(source_topics, feature_topics)
             process_changed_topics(changed_topics)
 
@@ -513,10 +520,17 @@ def main():
             try:
                 with open(previous_acls, 'r') as previous_acls_file:
                     source_acls = json.load(previous_acls_file)
+            except json.decoder.JSONDecodeError as error:
+                # if this is the first acl(s) for an application, we create an empty list for the previous acls
+                logger.error(error)
+                source_acls = []
+            try:
                 with open(current_acls, 'r') as current_acls_file:
                     feature_acls = json.load(current_acls_file)
             except json.decoder.JSONDecodeError as error:
+                # if one deletes all the acl(s) for an application, we create an empty list for the current acls
                 logger.error(error)
+                feature_acls = []
             changed_acls = find_changed_acls(source_acls, feature_acls)
             add_or_remove_acls(changed_acls)
 
@@ -526,8 +540,6 @@ def main():
         elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
-        else:
-            logger.info("No Kafka resource changes were detected")
 
 
 if __name__ == '__main__':
