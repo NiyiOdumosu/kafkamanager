@@ -3,7 +3,6 @@ from deepdiff import DeepDiff
 from datetime import datetime
 from subprocess import PIPE
 
-import click
 import json
 import logging
 import os
