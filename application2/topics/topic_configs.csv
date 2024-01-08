@@ -1,2 +1,0 @@
-topic name,partition count,replication factor,retention.ms,compression.type,cleanup.policy,max.message.bytes,ba.id,ba.name
-topic_test,4,1,86400000,producer,delete,1048588,,
