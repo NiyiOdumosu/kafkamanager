@@ -212,14 +212,16 @@ def update_existing_topic(topic_name, topic_config):
 
     current_topic_definition = response.json()
     # Check if the requested update is a config change
-    if'name' in topic_config[0].keys():
-        update_topic_configs(rest_topic_url, topic_config, topic_name)
-    elif ('partitions_count' in topic_config[0].keys()) and ('name' in topic_config[1].keys()):
-        update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
-        topic_config.pop(0)
-        update_topic_configs(rest_topic_url, topic_config, topic_name)
-    else:
-        update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
+    try:
+        if'name' in topic_config[0].keys():
+            update_topic_configs(rest_topic_url, topic_config, topic_name)
+        elif ('partitions_count' in topic_config[0].keys()) and ('name' in topic_config[1].keys()):
+                update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
+                topic_config.pop(0)
+                update_topic_configs(rest_topic_url, topic_config, topic_name)
+    except IndexError:
+        logger.info(f"Partition count for {topic_name} needs to be updated")
+    update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
 
 
 def update_topic_configs(rest_topic_url, topic_config, topic_name):
