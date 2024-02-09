@@ -229,10 +229,10 @@ def update_existing_topic(topic_name, topic_config):
                 update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
                 topic_config.pop(0)
                 update_topic_configs(rest_topic_url, topic_config, topic_name)
-        else:
-            update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
     except IndexError:
         logger.info(f"Partition count for {topic_name} needs to be updated")
+    if 'partitions_count' in topic_config[0].keys() and len(topic_config[0].keys()) == 1:
+        update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
 
 
 def update_topic_configs(rest_topic_url, topic_config, topic_name):
