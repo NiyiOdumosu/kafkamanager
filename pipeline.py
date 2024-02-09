@@ -75,12 +75,14 @@ def find_changed_topics(source_topics, new_topics):
             if diff:
                 # Check if this is a partition change
                 try:
-                    updated_partitions = find_changed_partitions(diff, feature_topics_dict, topic_name)
-                    changed_topic_names.append({"type": "update", "changes": updated_partitions})
+                    change_dict = find_changed_partitions(diff, feature_topics_dict, topic_name)
+                    changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
                     logger.error(f"Partitions do not need to be updated - {ke}")
-                updated_config = find_changed_configs(diff, feature_topics_dict, topic_name)
-                changed_topic_names.append({"type": "update", "changes": updated_config})
+                change_dict = find_changed_configs(diff, feature_topics_dict, topic_name)
+            # Make sure the dict is not empty before adding it to the changed topic names list
+            if not change_dict:
+                changed_topic_names.append({"type": "update", "changes": change_dict})
 
         else:
             # Topic was removed

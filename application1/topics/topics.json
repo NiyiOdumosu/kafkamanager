@@ -2,7 +2,7 @@
     {
         "topic_a": {
             "topic_name": "topic_a",
-            "partitions_count": "8",
+            "partitions_count": "9",
             "replication_factor": "1",
             "configs": [
                 {
@@ -27,7 +27,7 @@
     {
         "topic_c": {
             "topic_name": "topic_c",
-            "partitions_count": "4",
+            "partitions_count": "5",
             "replication_factor": "1",
             "configs": [
                 {
