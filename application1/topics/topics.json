@@ -2,16 +2,16 @@
     {
         "topic_a": {
             "topic_name": "topic_a",
-            "partitions_count": "4",
+            "partitions_count": "5",
             "replication_factor": "1",
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "delete"
+                    "value": "compact"
                 },
                 {
                     "name": "compression.type",
-                    "value": "zstd"
+                    "value": "producer"
                 },
                 {
                     "name": "retention.ms",
@@ -27,16 +27,16 @@
     {
         "topic_d": {
             "topic_name": "topic_d",
-            "partitions_count": "4",
+            "partitions_count": "5",
             "replication_factor": "1",
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "delete"
+                    "value": "compact,delete"
                 },
                 {
                     "name": "compression.type",
-                    "value": "zstd"
+                    "value": "producer"
                 },
                 {
                     "name": "retention.ms",
