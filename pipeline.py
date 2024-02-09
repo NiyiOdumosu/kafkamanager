@@ -75,51 +75,13 @@ def find_changed_topics(source_topics, new_topics):
             if diff:
                 # Check if this is a partition change
                 try:
-                    if diff['values_changed']["root[\'partitions_count\']"]:
-                        for change_type, details in diff.items():
-                            change_dict = {
-                                "topic_name": topic_name,
-                                "changes": []
-                            }
-                            for change in details:
-                                if change == "root[\'partitions_count\']":
-                                    configs_changes = re.findall(r"\['(.*?)'\]", change)
-                                    change_dict["changes"].append({
-                                        configs_changes[0]: details[change]['new_value']
-                                    })
-                                else:
-                                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                                    if configs_changes:
-                                        for index in configs_changes:
-                                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                                            change_dict["changes"].append({
-                                                "name": prop_name["name"],
-                                                "value": details[change]['new_value']
-                                            })
-                        changed_topic_names.append({"type": "update", "changes": change_dict})
+                    updated_partitions = find_changed_partitions(diff, feature_topics_dict, topic_name)
+                    changed_topic_names.append({"type": "update", "changes": updated_partitions})
                 except KeyError as ke:
-                    logger.error(ke)
-                try:
-                    if diff['values_changed']["root[\'configs\'][0][\'value\']"]:
-                        for change_type, details in diff.items():
-                            change_dict = {
-                                "topic_name": topic_name,
-                                "changes": []
-                            }
+                    logger.error(f"Partitions do not need to be updated - {ke}")
+                updated_config = find_changed_configs(diff, feature_topics_dict, topic_name)
+                changed_topic_names.append({"type": "update", "changes": updated_config})
 
-                            for change in details:
-                                configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                                if configs_changes:
-                                    for index in configs_changes:
-                                        prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                                        change_dict["changes"].append({
-                                            "name": prop_name["name"],
-                                            "value": details[change]['new_value']
-                                        })
-
-                        changed_topic_names.append({"type": "update", "changes": change_dict})
-                except KeyError as ke:
-                    logger.error(ke)
         else:
             # Topic was removed
             changed_topic_names.append({topic_name: source_topics_dict.get(topic_name), "type": "removed"})
@@ -130,6 +92,54 @@ def find_changed_topics(source_topics, new_topics):
             changed_topic_names.append({topic_name: feature_topics_dict.get(topic_name), "type": "new"})
 
     return changed_topic_names
+
+
+def find_changed_partitions(diff, feature_topics_dict, topic_name):
+    if diff['values_changed']["root[\'partitions_count\']"]:
+        for change_type, details in diff.items():
+            change_dict = {
+                "topic_name": topic_name,
+                "changes": []
+            }
+            for change in details:
+                if change == "root[\'partitions_count\']":
+                    configs_changes = re.findall(r"\['(.*?)'\]", change)
+                    change_dict["changes"].append({
+                        configs_changes[0]: details[change]['new_value']
+                    })
+                else:
+                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                    if configs_changes:
+                        for index in configs_changes:
+                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                            change_dict["changes"].append({
+                                "name": prop_name["name"],
+                                "value": details[change]['new_value']
+                            })
+    return change_dict
+
+
+def find_changed_configs(diff, feature_topics_dict, topic_name):
+    try:
+        if diff['values_changed']:
+            for change_type, details in diff.items():
+                change_dict = {
+                    "topic_name": topic_name,
+                    "changes": []
+                }
+
+                for change in details:
+                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                    if configs_changes:
+                        for index in configs_changes:
+                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                            change_dict["changes"].append({
+                                "name": prop_name["name"],
+                                "value": details[change]['new_value']
+                            })
+    except KeyError as ke:
+        logger.error(f"Configs could not be updated due to - {ke}")
+    return change_dict
 
 
 def process_changed_topics(changed_topic_names):
@@ -221,7 +231,8 @@ def update_existing_topic(topic_name, topic_config):
                 update_topic_configs(rest_topic_url, topic_config, topic_name)
     except IndexError:
         logger.info(f"Partition count for {topic_name} needs to be updated")
-    update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
+    if 'partitions_count' in topic_config[0].keys():
+        update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
 
 
 def update_topic_configs(rest_topic_url, topic_config, topic_name):
