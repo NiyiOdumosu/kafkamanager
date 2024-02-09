@@ -3,7 +3,7 @@
         "topic_a": {
             "topic_name": "topic_a",
             "partitions_count": "5",
-            "replication_factor": "1",
+            "replication_factor": "3",
             "configs": [
                 {
                     "name": "cleanup.policy",
