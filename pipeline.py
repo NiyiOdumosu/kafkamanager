@@ -79,10 +79,11 @@ def find_changed_topics(source_topics, new_topics):
                     changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
                     logger.error(f"Partitions do not need to be updated - {ke}")
-                change_dict = find_changed_configs(diff, feature_topics_dict, topic_name)
+                    change_dict = find_changed_configs(diff, feature_topics_dict, topic_name)
+                    changed_topic_names.append({"type": "update", "changes": change_dict})
             # Make sure the dict is not empty before adding it to the changed topic names list
-            if not change_dict:
-                changed_topic_names.append({"type": "update", "changes": change_dict})
+                if not change_dict:
+                    changed_topic_names.append({"type": "update", "changes": change_dict})
 
         else:
             # Topic was removed
@@ -131,14 +132,21 @@ def find_changed_configs(diff, feature_topics_dict, topic_name):
                 }
 
                 for change in details:
-                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                    if configs_changes:
-                        for index in configs_changes:
-                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                            change_dict["changes"].append({
-                                "name": prop_name["name"],
-                                "value": details[change]['new_value']
-                            })
+                    # Get changes for the replication factor
+                    if change == "root[\'replication_factor\']":
+                        configs_changes = re.findall(r"\['(.*?)'\]", change)
+                        change_dict["changes"].append({
+                            configs_changes[0]: details[change]['new_value']
+                        })
+                    else:
+                        configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                        if configs_changes:
+                            for index in configs_changes:
+                                prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                                change_dict["changes"].append({
+                                    "name": prop_name["name"],
+                                    "value": details[change]['new_value']
+                                })
     except KeyError as ke:
         logger.error(f"Configs could not be updated due to - {ke}")
     return change_dict
