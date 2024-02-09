@@ -134,8 +134,8 @@ def find_changed_topics(source_topics, new_topics):
 
 def process_changed_topics(changed_topic_names):
     for i, topic in enumerate(changed_topic_names):
-        topic_name = list(topic.keys())[i]
-        topic_configs = list(topic.values())[i]
+        topic_name = list(topic.keys())[0]
+        topic_configs = list(topic.values())[0]
         if topic['type'] == 'new':
             add_new_topic(topic_configs)
         elif topic['type'] == 'update':
