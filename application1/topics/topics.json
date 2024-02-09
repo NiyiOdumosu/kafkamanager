@@ -11,7 +11,7 @@
                 },
                 {
                     "name": "compression.type",
-                    "value": "zstd"
+                    "value": "producer"
                 },
                 {
                     "name": "retention.ms",
@@ -36,7 +36,7 @@
                 },
                 {
                     "name": "compression.type",
-                    "value": "gzip"
+                    "value": "snappy"
                 },
                 {
                     "name": "retention.ms",
