@@ -1,3 +1,3 @@
 topic name,partition count,replication factor,retention.ms,compression.type,cleanup.policy,max.message.bytes,ba.id,ba.name
-topic_a,6,1,86400000,zstd,delete,1048588,,
+topic_a,7,1,86400000,zstd,delete,1048588,,
 topic_c,4,1,86400000,zstd,delete,1048588,,
