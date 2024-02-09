@@ -28,7 +28,7 @@
         "topic_b": {
             "topic_name": "topic_b",
             "partitions_count": "4",
-            "replication_factor": "1",
+            "replication_factor": "3",
             "configs": [
                 {
                     "name": "cleanup.policy",
