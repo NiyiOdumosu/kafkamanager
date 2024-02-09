@@ -25,33 +25,8 @@
         }
     },
     {
-        "topic_b": {
-            "topic_name": "topic_b",
-            "partitions_count": "4",
-            "replication_factor": "1",
-            "configs": [
-                {
-                    "name": "cleanup.policy",
-                    "value": "delete"
-                },
-                {
-                    "name": "compression.type",
-                    "value": "zstd"
-                },
-                {
-                    "name": "retention.ms",
-                    "value": 86400000
-                },
-                {
-                    "name": "max.message.bytes",
-                    "value": 1048588
-                }
-            ]
-        }
-    },
-    {
-        "topic_c": {
-            "topic_name": "topic_c",
+        "topic_d": {
+            "topic_name": "topic_d",
             "partitions_count": "4",
             "replication_factor": "1",
             "configs": [
