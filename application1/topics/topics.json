@@ -3,7 +3,7 @@
         "topic_a": {
             "topic_name": "topic_a",
             "partitions_count": "4",
-            "replication_factor": "3",
+            "replication_factor": "1",
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -28,7 +28,7 @@
         "topic_b": {
             "topic_name": "topic_b",
             "partitions_count": "4",
-            "replication_factor": "3",
+            "replication_factor": "1",
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -53,7 +53,7 @@
         "topic_c": {
             "topic_name": "topic_c",
             "partitions_count": "4",
-            "replication_factor": "3",
+            "replication_factor": "1",
             "configs": [
                 {
                     "name": "cleanup.policy",
