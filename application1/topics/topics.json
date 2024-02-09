@@ -2,7 +2,7 @@
     {
         "topic_a": {
             "topic_name": "topic_a",
-            "partitions_count": "4",
+            "partitions_count": "5",
             "replication_factor": "1",
             "configs": [
                 {
@@ -11,7 +11,7 @@
                 },
                 {
                     "name": "compression.type",
-                    "value": "producer"
+                    "value": "zstd"
                 },
                 {
                     "name": "retention.ms",
@@ -27,7 +27,7 @@
     {
         "topic_b": {
             "topic_name": "topic_b",
-            "partitions_count": "3",
+            "partitions_count": "4",
             "replication_factor": "1",
             "configs": [
                 {
@@ -36,7 +36,7 @@
                 },
                 {
                     "name": "compression.type",
-                    "value": "producer"
+                    "value": "zstd"
                 },
                 {
                     "name": "retention.ms",
