@@ -25,8 +25,8 @@
         }
     },
     {
-        "topic_b": {
-            "topic_name": "topic_b",
+        "topic_c": {
+            "topic_name": "topic_c",
             "partitions_count": "4",
             "replication_factor": "1",
             "configs": [
