@@ -521,6 +521,7 @@ def main():
     else:
         print()
 
+
 def deploy_dev_changes(current_acls, current_topics, files_list, previous_acls, previous_topics):
     for file in files_list:
         if "topics_dev.json" in file:
