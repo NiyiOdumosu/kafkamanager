@@ -510,12 +510,191 @@ def main():
         current_branch = match.group(1)
     print(current_branch)
 
-    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
+    if current_branch == 'usm-onprem-dev':
+        deploy_dev_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
+    elif current_branch == 'usm-onprem-dev':
+        deploy_int_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
+    elif current_branch == 'usm-onprem-pvs':
+        deploy_pvs_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
+    elif current_branch == 'usm-onprem-pvs':
+        deploy_prd_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
+    else:
+        print()
 
-
-def deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics):
+def deploy_dev_changes(current_acls, current_topics, files_list, previous_acls, previous_topics):
     for file in files_list:
-        if "topics.json" in file:
+        if "topics_dev.json" in file:
+            filename = file.split(" ")[1]
+            current_topics_command = f"git show HEAD:{filename} > {current_topics}"
+            previous_topics_command = f"git show HEAD~1:{filename} > {previous_topics}"
+
+            subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            try:
+                with open(previous_topics, 'r') as previous_topics_file:
+                    source_topics = json.load(previous_topics_file)
+            except json.decoder.JSONDecodeError as error:
+                # if this is the first topic(s) for an application, we create an empty list for the previous topics
+                logger.error(error)
+                source_topics = []
+            try:
+                with open(current_topics, 'r') as current_topics_file:
+                    feature_topics = json.load(current_topics_file)
+            except json.decoder.JSONDecodeError as error:
+                # if one deletes all the topic(s) for an application, we create an empty list for the current topics
+                logger.error(error)
+                feature_topics = []
+            changed_topics = find_changed_topics(source_topics, feature_topics)
+            process_changed_topics(changed_topics)
+
+        if "acls.json" in file:
+            filename = file.split(" ")[1]
+            current_acls_command = f"git show HEAD:{filename} > {current_acls}"
+            previous_acls_command = f"git show HEAD~1:{filename} > {previous_acls}"
+            subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            try:
+                with open(previous_acls, 'r') as previous_acls_file:
+                    source_acls = json.load(previous_acls_file)
+            except json.decoder.JSONDecodeError as error:
+                # if this is the first acl(s) for an application, we create an empty list for the previous acls
+                logger.error(error)
+                source_acls = []
+            try:
+                with open(current_acls, 'r') as current_acls_file:
+                    feature_acls = json.load(current_acls_file)
+            except json.decoder.JSONDecodeError as error:
+                # if one deletes all the acl(s) for an application, we create an empty list for the current acls
+                logger.error(error)
+                feature_acls = []
+            changed_acls = find_changed_acls(source_acls, feature_acls)
+            add_or_remove_acls(changed_acls)
+
+        if ("connectors" in file) and ('D ' in file):
+            filename = file.split(" ")[1]
+            delete_connector(filename)
+        elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
+            filename = file.split(" ")[1]
+            process_connector_changes(filename)
+
+
+def deploy_int_changes(current_acls, current_topics, files_list, previous_acls, previous_topics):
+    for file in files_list:
+        if "topics_int.json" in file:
+            filename = file.split(" ")[1]
+            current_topics_command = f"git show HEAD:{filename} > {current_topics}"
+            previous_topics_command = f"git show HEAD~1:{filename} > {previous_topics}"
+
+            subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            try:
+                with open(previous_topics, 'r') as previous_topics_file:
+                    source_topics = json.load(previous_topics_file)
+            except json.decoder.JSONDecodeError as error:
+                # if this is the first topic(s) for an application, we create an empty list for the previous topics
+                logger.error(error)
+                source_topics = []
+            try:
+                with open(current_topics, 'r') as current_topics_file:
+                    feature_topics = json.load(current_topics_file)
+            except json.decoder.JSONDecodeError as error:
+                # if one deletes all the topic(s) for an application, we create an empty list for the current topics
+                logger.error(error)
+                feature_topics = []
+            changed_topics = find_changed_topics(source_topics, feature_topics)
+            process_changed_topics(changed_topics)
+
+        if "acls.json" in file:
+            filename = file.split(" ")[1]
+            current_acls_command = f"git show HEAD:{filename} > {current_acls}"
+            previous_acls_command = f"git show HEAD~1:{filename} > {previous_acls}"
+            subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            try:
+                with open(previous_acls, 'r') as previous_acls_file:
+                    source_acls = json.load(previous_acls_file)
+            except json.decoder.JSONDecodeError as error:
+                # if this is the first acl(s) for an application, we create an empty list for the previous acls
+                logger.error(error)
+                source_acls = []
+            try:
+                with open(current_acls, 'r') as current_acls_file:
+                    feature_acls = json.load(current_acls_file)
+            except json.decoder.JSONDecodeError as error:
+                # if one deletes all the acl(s) for an application, we create an empty list for the current acls
+                logger.error(error)
+                feature_acls = []
+            changed_acls = find_changed_acls(source_acls, feature_acls)
+            add_or_remove_acls(changed_acls)
+
+        if ("connectors" in file) and ('D ' in file):
+            filename = file.split(" ")[1]
+            delete_connector(filename)
+        elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
+            filename = file.split(" ")[1]
+            process_connector_changes(filename)
+
+
+def deploy_pvs_changes(current_acls, current_topics, files_list, previous_acls, previous_topics):
+    for file in files_list:
+        if "topics_pvs.json" in file:
+            filename = file.split(" ")[1]
+            current_topics_command = f"git show HEAD:{filename} > {current_topics}"
+            previous_topics_command = f"git show HEAD~1:{filename} > {previous_topics}"
+
+            subprocess.run(current_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_topics_command, stdout=PIPE, stderr=PIPE, shell=True)
+            try:
+                with open(previous_topics, 'r') as previous_topics_file:
+                    source_topics = json.load(previous_topics_file)
+            except json.decoder.JSONDecodeError as error:
+                # if this is the first topic(s) for an application, we create an empty list for the previous topics
+                logger.error(error)
+                source_topics = []
+            try:
+                with open(current_topics, 'r') as current_topics_file:
+                    feature_topics = json.load(current_topics_file)
+            except json.decoder.JSONDecodeError as error:
+                # if one deletes all the topic(s) for an application, we create an empty list for the current topics
+                logger.error(error)
+                feature_topics = []
+            changed_topics = find_changed_topics(source_topics, feature_topics)
+            process_changed_topics(changed_topics)
+
+        if "acls.json" in file:
+            filename = file.split(" ")[1]
+            current_acls_command = f"git show HEAD:{filename} > {current_acls}"
+            previous_acls_command = f"git show HEAD~1:{filename} > {previous_acls}"
+            subprocess.run(current_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            subprocess.run(previous_acls_command, stdout=PIPE, stderr=PIPE, shell=True)
+            try:
+                with open(previous_acls, 'r') as previous_acls_file:
+                    source_acls = json.load(previous_acls_file)
+            except json.decoder.JSONDecodeError as error:
+                # if this is the first acl(s) for an application, we create an empty list for the previous acls
+                logger.error(error)
+                source_acls = []
+            try:
+                with open(current_acls, 'r') as current_acls_file:
+                    feature_acls = json.load(current_acls_file)
+            except json.decoder.JSONDecodeError as error:
+                # if one deletes all the acl(s) for an application, we create an empty list for the current acls
+                logger.error(error)
+                feature_acls = []
+            changed_acls = find_changed_acls(source_acls, feature_acls)
+            add_or_remove_acls(changed_acls)
+
+        if ("connectors" in file) and ('D ' in file):
+            filename = file.split(" ")[1]
+            delete_connector(filename)
+        elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
+            filename = file.split(" ")[1]
+            process_connector_changes(filename)
+
+
+def deploy_prd_changes(current_acls, current_topics, files_list, previous_acls, previous_topics):
+    for file in files_list:
+        if "topics_prd.json" in file:
             filename = file.split(" ")[1]
             current_topics_command = f"git show HEAD:{filename} > {current_topics}"
             previous_topics_command = f"git show HEAD~1:{filename} > {previous_topics}"
