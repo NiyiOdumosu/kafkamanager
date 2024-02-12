@@ -512,11 +512,11 @@ def main():
 
     if current_branch == 'usm-onprem-dev':
         deploy_dev_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
-    elif current_branch == 'usm-onprem-dev':
+    elif current_branch == 'usm-onprem-int':
         deploy_int_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
     elif current_branch == 'usm-onprem-pvs':
         deploy_pvs_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
-    elif current_branch == 'usm-onprem-pvs':
+    elif current_branch == 'usm-onprem-prd':
         deploy_prd_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
     else:
         print()
