@@ -1,7 +1,7 @@
 [
     {
-        "topic_a_int": {
-            "topic_name": "topic_a_int",
+        "topic_a2_int": {
+            "topic_name": "topic_a2_int",
             "partitions_count": "5",
             "replication_factor": "3",
             "configs": [

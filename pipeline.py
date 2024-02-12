@@ -510,8 +510,10 @@ def main():
         current_branch = match.group(1)
     print(current_branch)
 
+    env = ""
     if current_branch == 'usm-onprem-dev':
-        deploy_dev_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
+        env = "dev"
+        deploy_dev_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, env)
     elif current_branch == 'usm-onprem-int':
         deploy_int_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
     elif current_branch == 'usm-onprem-pvs':
@@ -522,9 +524,9 @@ def main():
         print()
 
 
-def deploy_dev_changes(current_acls, current_topics, files_list, previous_acls, previous_topics):
+def deploy_dev_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, env):
     for file in files_list:
-        if "topics_dev.json" in file:
+        if f"topics_{env}.json" in file:
             filename = file.split(" ")[1]
             current_topics_command = f"git show HEAD:{filename} > {current_topics}"
             previous_topics_command = f"git show HEAD~1:{filename} > {previous_topics}"
