@@ -132,21 +132,14 @@ def find_changed_configs(diff, feature_topics_dict, topic_name):
                 }
 
                 for change in details:
-                    # Get changes for the replication factor
-                    if change == "root[\'replication_factor\']":
-                        configs_changes = re.findall(r"\['(.*?)'\]", change)
-                        change_dict["changes"].append({
-                            configs_changes[0]: details[change]['new_value']
-                        })
-                    else:
-                        configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                        if configs_changes:
-                            for index in configs_changes:
-                                prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                                change_dict["changes"].append({
-                                    "name": prop_name["name"],
-                                    "value": details[change]['new_value']
-                                })
+                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                    if configs_changes:
+                        for index in configs_changes:
+                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                            change_dict["changes"].append({
+                                "name": prop_name["name"],
+                                "value": details[change]['new_value']
+                            })
     except KeyError as ke:
         logger.error(f"Configs could not be updated due to - {ke}")
     return change_dict
@@ -221,7 +214,7 @@ def update_existing_topic(topic_name, topic_config):
 
     Notes:
     This function first retrieves the current definition of the topic by making a GET request to the Kafka REST API.
-    It then updates the replication factor and partition count using helper functions.
+    It then updates the partition count using helper functions.
     Finally, it alters the topic configurations using a POST request to the Kafka REST API.
     """
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
@@ -509,6 +502,18 @@ def main():
     current_acls = 'application1/acls/current-acls.json'
     previous_acls = 'application1/acls/previous-acls.json'
 
+    # Get the current branch
+    branches = subprocess.run(['git', 'branch'], stdout=PIPE, stderr=PIPE).stdout
+    branches_string = branches.decode('utf-8')
+    match = re.search(r'\*\s*([^\s]+)', branches_string)
+    if match:
+        current_branch = match.group(1)
+    print(current_branch)
+
+    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics)
+
+
+def deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics):
     for file in files_list:
         if "topics.json" in file:
             filename = file.split(" ")[1]
