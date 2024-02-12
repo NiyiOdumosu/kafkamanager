@@ -1,2 +1,2 @@
 topic name,partition count,replication factor,retention.ms,compression.type,cleanup.policy,max.message.bytes,ba.id,ba.name
-topic_a_prd,5,3,86400000,producer,compact,1048588,,
+topic_a_prd,5,1,86400000,producer,compact,1048588,,
