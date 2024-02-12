@@ -6,8 +6,9 @@ import click
 
 @click.command()
 @click.argument('topic_path')
-def main(topic_path):
-    df = pd.read_csv(f'{topic_path}/topic_configs.csv')
+@click.argument('env')
+def main(topic_path, env):
+    df = pd.read_csv(f'{topic_path}/topic_configs_{env}.csv')
 
     topics_list = []
 
@@ -73,7 +74,7 @@ def main(topic_path):
 
     print(json_output)
 
-    with open(f'{topic_path}/topics.json', 'w') as json_file:
+    with open(f'{topic_path}/topics_{env}.json', 'w') as json_file:
         json_file.write(json_output)
 
 
