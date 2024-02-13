@@ -2,3 +2,4 @@ topic name,partition count,replication factor,retention.ms,compression.type,clea
 topic_a_dev,4,1,86400000,producer,compact,1048588,,
 topic_a_dev2,4,1,86400000,producer,compact,1048588,,
 topic_a_sys,4,1,86400000,producer,compact,1048588,,
+topic!@#,4,1,86400000,producer,compact,1048588,,

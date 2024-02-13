@@ -180,6 +180,15 @@ def add_new_topic(topic):
 
     """
     topic_name = topic["topic_name"]
+
+    pattern = r'^[a-zA-Z0-9]+(?:[_.-][a-zA-Z0-9]+)*$'
+
+    # Check if the topic matches the pattern
+    if re.match(pattern, topic_name):
+        print("The topic is alphanumeric and follows the specified delimiter rules.")
+    else:
+        print("The topic contains invalid characters or does not follow the specified delimiter rules.")
+
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
     get_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
