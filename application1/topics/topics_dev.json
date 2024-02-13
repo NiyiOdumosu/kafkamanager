@@ -40,7 +40,7 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 604800001
+                    "value": 604800000
                 },
                 {
                     "name": "max.message.bytes",
