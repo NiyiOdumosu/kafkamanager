@@ -181,13 +181,21 @@ def add_new_topic(topic):
     """
     topic_name = topic["topic_name"]
 
+    retention_ms = topic['configs'][2]['value']
+    max_message_bytes = topic['configs'][3]['value']
+
+    if retention_ms > 604800000 or max_message_bytes > 5242940:
+        logger.error(f"The retention.ms for {topic_name} is larger than 7 days OR the max message bytes is greater than 5 Mebibytes.")
+        exit(1)
+
     pattern = r'^[a-zA-Z0-9]+(?:[_.-][a-zA-Z0-9]+)*$'
 
-    # Check if the topic matches the pattern
+    # Make sure topic name is valid
     if re.match(pattern, topic_name):
         print("The topic is alphanumeric and follows the specified delimiter rules.")
     else:
-        print("The topic contains invalid characters or does not follow the specified delimiter rules.")
+        logger.error("The topic name contains invalid characters or does not follow the specified delimiter rules.")
+        exit(1)
 
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
@@ -233,6 +241,7 @@ def update_existing_topic(topic_name, topic_config):
         exit(1)
 
     current_topic_definition = response.json()
+
     # Check if the requested update is a config change
     try:
         if'name' in topic_config[0].keys():
