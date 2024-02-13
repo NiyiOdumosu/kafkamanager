@@ -242,6 +242,15 @@ def update_existing_topic(topic_name, topic_config):
 
     current_topic_definition = response.json()
 
+    for config in topic_config:
+        print(config)
+
+    # retention_ms = topic_config['configs'][0]['value']
+    # max_message_bytes = topic_config['configs'][1]['value']
+    #
+    # if retention_ms > 604800000 or max_message_bytes > 5242940:
+    #     logger.error(f"The retention.ms for {topic_name} is larger than 7 days OR the max message bytes is greater than 5 Mebibytes.")
+    #     exit(1)
     # Check if the requested update is a config change
     try:
         if'name' in topic_config[0].keys():
