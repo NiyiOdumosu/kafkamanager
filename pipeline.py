@@ -78,7 +78,7 @@ def find_changed_topics(source_topics, new_topics):
                     change_dict = find_changed_partitions(diff, feature_topics_dict, topic_name)
                     changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
-                    logger.error(f"Partitions do not need to be updated - {ke}")
+                    logger.info(f"Partitions do not need to be updated - {ke}")
                     change_dict = find_changed_configs(diff, feature_topics_dict, topic_name)
                     changed_topic_names.append({"type": "update", "changes": change_dict})
             # Make sure the dict is not empty before adding it to the changed topic names list
@@ -242,15 +242,15 @@ def update_existing_topic(topic_name, topic_config):
 
     current_topic_definition = response.json()
 
+    # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
     for config in topic_config:
-        print(config)
+        if config['name'] == 'retention.ms' and config['value'] > 604800000:
+            logger.error(f"The retention.ms for {topic_name} is larger than 7 days")
+            exit(1)
+        if config['name'] == 'max.message.bytes' and config['value'] > 5242940:
+            logger.error(f"The max.message.bytes for {topic_name} is greater than 5 Mebibytes.")
+            exit(1)
 
-    # retention_ms = topic_config['configs'][0]['value']
-    # max_message_bytes = topic_config['configs'][1]['value']
-    #
-    # if retention_ms > 604800000 or max_message_bytes > 5242940:
-    #     logger.error(f"The retention.ms for {topic_name} is larger than 7 days OR the max message bytes is greater than 5 Mebibytes.")
-    #     exit(1)
     # Check if the requested update is a config change
     try:
         if'name' in topic_config[0].keys():
