@@ -192,7 +192,7 @@ def add_new_topic(topic):
 
     # Make sure topic name is valid
     if re.match(pattern, topic_name):
-        print("The topic is alphanumeric and follows the specified delimiter rules.")
+        logger.info("The topic is alphanumeric and follows the specified delimiter rules.")
     else:
         logger.error("The topic name contains invalid characters or does not follow the specified delimiter rules.")
         exit(1)
