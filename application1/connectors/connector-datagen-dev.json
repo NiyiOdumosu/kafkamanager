@@ -1,0 +1,9 @@
+{
+  "connector.class": "io.confluent.kafka.connect.datagen.DatagenConnector",
+  "kafka.topic" : "orders",
+  "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "output.data.format" : "JSON",
+  "quickstart" : "ORDERS",
+  "tasks.max" : "1",
+  "user":"admin"
+}

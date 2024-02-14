@@ -494,9 +494,9 @@ def process_connector_changes(connector_file):
     topic_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
 
     if topic_response.status_code == 200:
-        logger.info(f"Response code is {str(topic_response.status_code)}")
+        logger.info(f"Topic {topic_name} for connector {connector_name} currently exists")
     else:
-        logger.error(f"Failed due to the following status code {str(topic_response.status_code)} and reason {str(topic_response.text)}" )
+        logger.error(f"Topic {topic_name} for connector {connector_name} currently does not exist - {str(topic_response.status_code)}" )
         exit(1)
 
     connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
