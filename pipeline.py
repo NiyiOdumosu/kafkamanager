@@ -242,15 +242,6 @@ def update_existing_topic(topic_name, topic_config):
 
     current_topic_definition = response.json()
 
-    # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
-    for config in topic_config:
-        if config['name'] == 'retention.ms' and config['value'] > 604800000:
-            logger.error(f"The retention.ms for {topic_name} is larger than 7 days")
-            exit(1)
-        if config['name'] == 'max.message.bytes' and config['value'] > 5242940:
-            logger.error(f"The max.message.bytes for {topic_name} is greater than 5 Mebibytes.")
-            exit(1)
-
     # Check if the requested update is a config change
     try:
         if'name' in topic_config[0].keys():
@@ -266,6 +257,15 @@ def update_existing_topic(topic_name, topic_config):
 
 
 def update_topic_configs(rest_topic_url, topic_config, topic_name):
+    # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
+    for config in topic_config:
+        if config['name'] == 'retention.ms' and config['value'] > 604800000:
+            logger.error(f"The retention.ms for {topic_name} is larger than 7 days")
+            exit(1)
+        if config['name'] == 'max.message.bytes' and config['value'] > 5242940:
+            logger.error(f"The max.message.bytes for {topic_name} is greater than 5 Mebibytes.")
+            exit(1)
+
     updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
     logger.info("altering configs to " + updated_Configs)
     with open('CHANGELOG.md', 'a') as f:
