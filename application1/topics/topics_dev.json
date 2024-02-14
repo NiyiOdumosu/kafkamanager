@@ -40,11 +40,11 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 86400000
+                    "value": 604800000
                 },
                 {
                     "name": "max.message.bytes",
-                    "value": 1048588
+                    "value": 5242941
                 }
             ]
         }
@@ -65,11 +65,11 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 86400000
+                    "value": 604800001
                 },
                 {
                     "name": "max.message.bytes",
-                    "value": 1048588
+                    "value": 5242941
                 }
             ]
         }
