@@ -502,8 +502,8 @@ def process_connector_changes(connector_file):
     connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if connect_response.status_code == 201 or connect_response.status_code == 200:
-            logger.info(f"The connector {connector_name} has been successfully created")
-            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully created\n")
+            logger.info(f"The connector {connector_name} has been successfully deployed")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully deployed\n")
         else:
             logger.error(f"The connector {connector_name} returned {str(connect_response.status_code)} due to the following reason: {connect_response.text}")
             f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(connect_response.status_code)} due to the following reason: {connect_response.text}\n")
