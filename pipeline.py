@@ -485,8 +485,9 @@ def process_connector_changes(connector_file):
     json_file = open(connector_file)
     json_string_template = string.Template(json_file.read())
     json_string = json_string_template.substitute(**os.environ)
+    connector_configs = json.loads(json_string)
 
-    topic_name = json_string['topics']
+    topic_name = connector_configs['kafka.topic']
 
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL,CLUSTER_ID)
 
@@ -496,10 +497,11 @@ def process_connector_changes(connector_file):
         logger.info(f"Response code is {str(topic_response.status_code)}")
     else:
         logger.error(f"Failed due to the following status code {str(topic_response.status_code)} and reason {str(topic_response.text)}" )
+        exit(1)
 
     connect_response = requests.put(connect_rest_url, data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
-        if connect_response.status_code == 201:
+        if connect_response.status_code == 201 or connect_response.status_code == 200:
             logger.info(f"The connector {connector_name} has been successfully created")
             f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully created\n")
         else:
