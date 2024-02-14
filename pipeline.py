@@ -475,7 +475,7 @@ def build_connect_rest_url(base_url, connector_name):
     Returns:
     str: The constructed REST API URL for connectors.
     """
-    return f'{base_url}/connectors/{connector_name}/config'
+    return f'{base_url}/connectors/{connector_name}'
 
 
 def process_connector_changes(connector_file):
@@ -487,7 +487,7 @@ def process_connector_changes(connector_file):
     json_string = json_string_template.substitute(**os.environ)
     connector_configs = json.loads(json_string)
 
-    topic_name = connector_configs['kafka.topic']
+    topic_name = connector_configs['topics']
 
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL,CLUSTER_ID)
 
@@ -499,7 +499,7 @@ def process_connector_changes(connector_file):
         logger.error(f"Failed due to the following status code {str(topic_response.status_code)} and reason {str(topic_response.text)}" )
         exit(1)
 
-    connect_response = requests.put(connect_rest_url, data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if connect_response.status_code == 201 or connect_response.status_code == 200:
             logger.info(f"The connector {connector_name} has been successfully created")
@@ -514,11 +514,11 @@ def delete_connector(connector_file):
     connector_name = connector_file.split("/connectors/")[1].replace(".json","")
     connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
 
-    response = requests.delete(f"{connect_rest_url}/{connector_name}", auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    response = requests.delete(connect_rest_url, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 204:
             logger.info(f"The connector {connector_name} has been successfully created")
-            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully created\n")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully deleted\n")
         else:
             logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
             f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
