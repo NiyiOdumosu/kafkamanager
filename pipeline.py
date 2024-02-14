@@ -486,23 +486,31 @@ def process_connector_changes(connector_file):
     json_string_template = string.Template(json_file.read())
     json_string = json_string_template.substitute(**os.environ)
 
-    response = requests.put(connect_rest_url, data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    topic_name = json_string['topics']
+
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL,CLUSTER_ID)
+
+    topic_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+
+    if topic_response.status_code == 200:
+        logger.info(f"Response code is {str(topic_response.status_code)}")
+    else:
+        logger.error(f"Failed due to the following status code {str(topic_response.status_code)} and reason {str(topic_response.text)}" )
+
+    connect_response = requests.put(connect_rest_url, data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
-        if response.status_code == 201:
+        if connect_response.status_code == 201:
             logger.info(f"The connector {connector_name} has been successfully created")
             f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully created\n")
         else:
-            logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
-            f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
+            logger.error(f"The connector {connector_name} returned {str(connect_response.status_code)} due to the following reason: {connect_response.text}")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(connect_response.status_code)} due to the following reason: {connect_response.text}\n")
 
 
 def delete_connector(connector_file):
     # Remove a connector
     connector_name = connector_file.split("/connectors/")[1].replace(".json","")
     connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
-    json_file = open(connector_file)
-    json_string_template = string.Template(json_file.read())
-    # json_string = json_string_template.substitute(**os.environ)
 
     response = requests.delete(f"{connect_rest_url}/{connector_name}", auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
@@ -512,43 +520,6 @@ def delete_connector(connector_file):
         else:
             logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
             f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
-
-
-def main():
-    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], stdout=PIPE, stderr=PIPE).stdout
-    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1',], stdout=PIPE, stderr=PIPE).stdout
-
-    latest_commit = latest_sha.decode('utf-8').rstrip('\n')
-    previous_commit = previous_sha.decode('utf-8').rstrip('\n')
-
-    files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], stdout=PIPE, stderr=PIPE).stdout
-    files_string = files.decode('utf-8')
-    pattern = re.compile(r'([AMD])\s+(.+)')
-    files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
-
-    current_topics = 'application1/topics/current-topics.json'
-    previous_topics = 'application1/topics/previous-topics.json'
-
-    current_acls = 'application1/acls/current-acls.json'
-    previous_acls = 'application1/acls/previous-acls.json'
-
-    # Get the current branch
-    branches = subprocess.run(['git', 'branch'], stdout=PIPE, stderr=PIPE).stdout
-    branches_string = branches.decode('utf-8')
-    match = re.search(r'\*\s*([^\s]+)', branches_string)
-    if match:
-        current_branch = match.group(1)
-
-    if current_branch == 'usm-onprem-dev':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "dev")
-    elif current_branch == 'usm-onprem-int':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "int")
-    elif current_branch == 'usm-onprem-pvs':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "pvs")
-    elif current_branch == 'usm-onprem-prd':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "prd")
-    else:
-        logger.info("The environment branch is not listed")
 
 
 def deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, env):
@@ -606,6 +577,44 @@ def deploy_changes(current_acls, current_topics, files_list, previous_acls, prev
         elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
+
+
+
+def main():
+    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], stdout=PIPE, stderr=PIPE).stdout
+    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1',], stdout=PIPE, stderr=PIPE).stdout
+
+    latest_commit = latest_sha.decode('utf-8').rstrip('\n')
+    previous_commit = previous_sha.decode('utf-8').rstrip('\n')
+
+    files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], stdout=PIPE, stderr=PIPE).stdout
+    files_string = files.decode('utf-8')
+    pattern = re.compile(r'([AMD])\s+(.+)')
+    files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
+
+    current_topics = 'application1/topics/current-topics.json'
+    previous_topics = 'application1/topics/previous-topics.json'
+
+    current_acls = 'application1/acls/current-acls.json'
+    previous_acls = 'application1/acls/previous-acls.json'
+
+    # Get the current branch
+    branches = subprocess.run(['git', 'branch'], stdout=PIPE, stderr=PIPE).stdout
+    branches_string = branches.decode('utf-8')
+    match = re.search(r'\*\s*([^\s]+)', branches_string)
+    if match:
+        current_branch = match.group(1)
+
+    if current_branch == 'usm-onprem-dev':
+        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "dev")
+    elif current_branch == 'usm-onprem-int':
+        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "int")
+    elif current_branch == 'usm-onprem-pvs':
+        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "pvs")
+    elif current_branch == 'usm-onprem-prd':
+        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "prd")
+    else:
+        logger.info("The environment branch is not listed")
 
 
 if __name__ == '__main__':
