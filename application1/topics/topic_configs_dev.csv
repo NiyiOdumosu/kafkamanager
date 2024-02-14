@@ -1,4 +1,4 @@
-topic name,partition count,replication factor,retention.ms,compression.type,cleanup.policy,max.message.bytes,ba.id,ba.name
-topic_a_dev,5,1,86400000,producer,compact,1048588,,
-topic_a_dev2,5,1,604800000,producer,compact,5242941,,
-topic_a_sys,5,1,604800001,producer,compact,5242941,,
+topic name,partition count,retention.ms,compression.type,cleanup.policy,max.message.bytes,ba.id,ba.name
+topic_a_dev,5,86400000,producer,compact,1048588,,
+topic_a_dev2,5,604800000,producer,compact,5242941,,
+topic_a_sys,5,604800001,producer,compact,5242941,,
