@@ -299,6 +299,9 @@ def update_partition_count(current_topic_definition, rest_topic_url, partition_c
         new_partition_count = int(partition_count)
         if new_partition_count == current_partitions_count:
             logger.info(f"Requested partition count and current partition count is the same - {new_partition_count}")
+        if new_partition_count > 32:
+            logger.error(f"Partition count can not be higher than 32")
+            exit(1)
         if new_partition_count > current_partitions_count:
             logger.info(f"A requested increase of partitions for topic  {topic_name} is from "
                         f"{str(current_partitions_count)} to {str(new_partition_count)}")
@@ -597,10 +600,10 @@ def deploy_changes(current_acls, current_topics, files_list, previous_acls, prev
             changed_acls = find_changed_acls(source_acls, feature_acls)
             add_or_remove_acls(changed_acls)
 
-        if ("connectors" in file) and ('D ' in file):
+        if ("connectors" in file) and (f"-{env}" in file) and ('D ' in file):
             filename = file.split(" ")[1]
             delete_connector(filename)
-        elif (("connectors" in file) and ('M ' in file)) or (("connectors" in file) and ('A ' in file)):
+        elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
 
