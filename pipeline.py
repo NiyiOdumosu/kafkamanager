@@ -487,9 +487,9 @@ def process_connector_changes(connector_file):
     json_string = json_string_template.substitute(**os.environ)
     connector_configs = json.loads(json_string)
 
-    topic_name = connector_configs['topics']
+    topic_name = connector_configs['kafka.topic'] or connector_configs['topics']
 
-    rest_topic_url = build_topic_rest_url(REST_PROXY_URL,CLUSTER_ID)
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
     topic_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
 

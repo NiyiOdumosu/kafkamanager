@@ -25,14 +25,14 @@
         }
     },
     {
-        "topic_a_dev2": {
-            "topic_name": "topic_a_dev2",
-            "partitions_count": "5",
+        "orders": {
+            "topic_name": "orders",
+            "partitions_count": "4",
             "replication_factor": 1,
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "compact"
+                    "value": "delete"
                 },
                 {
                     "name": "compression.type",
@@ -40,36 +40,11 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 604800000
+                    "value": 86400000
                 },
                 {
                     "name": "max.message.bytes",
-                    "value": 5242941
-                }
-            ]
-        }
-    },
-    {
-        "topic_a_sys": {
-            "topic_name": "topic_a_sys",
-            "partitions_count": "5",
-            "replication_factor": 1,
-            "configs": [
-                {
-                    "name": "cleanup.policy",
-                    "value": "compact"
-                },
-                {
-                    "name": "compression.type",
-                    "value": "producer"
-                },
-                {
-                    "name": "retention.ms",
-                    "value": 604800001
-                },
-                {
-                    "name": "max.message.bytes",
-                    "value": 5242941
+                    "value": 1048588
                 }
             ]
         }
