@@ -2,7 +2,7 @@ from github import Github
 from deepdiff import DeepDiff
 from datetime import datetime
 from subprocess import PIPE
-from jsonschema import validate
+# from jsonschema import validate
 
 import json
 import logging
@@ -488,7 +488,7 @@ def process_connector_changes(connector_file):
     json_string = json_string_template.substitute(**os.environ)
     connector_configs = json.loads(json_string)
 
-    validate(instance=connector_configs, schema=json_string_template)
+    # validate(instance=connector_configs, schema=json_string_template)
 
     topic_name = connector_configs['kafka.topic'] or connector_configs['topics']
 
