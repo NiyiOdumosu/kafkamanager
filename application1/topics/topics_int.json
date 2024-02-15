@@ -1,0 +1,77 @@
+[
+    {
+        "topic_a_int": {
+            "topic_name": "topic_a_int",
+            "partitions_count": "5",
+            "replication_factor": "1",
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "compact"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "producer"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 86400000
+                },
+                {
+                    "name": "max.message.bytes",
+                    "value": 1048588
+                }
+            ]
+        }
+    },
+    {
+        "topic_b_int": {
+            "topic_name": "topic_b_int",
+            "partitions_count": "5",
+            "replication_factor": "1",
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "compact"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "producer"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 86400000
+                },
+                {
+                    "name": "max.message.bytes",
+                    "value": 1048588
+                }
+            ]
+        }
+    },
+    {
+        "topic_c_int": {
+            "topic_name": "topic_c_int",
+            "partitions_count": "5",
+            "replication_factor": "1",
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "compact"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "producer"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 86400000
+                },
+                {
+                    "name": "max.message.bytes",
+                    "value": 1048588
+                }
+            ]
+        }
+    }
+]
