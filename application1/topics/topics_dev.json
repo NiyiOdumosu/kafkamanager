@@ -22,12 +22,13 @@
                     "value": 1048588
                 }
             ]
-        }
+        },
+        "ba_id": null
     },
     {
-        "orders": {
-            "topic_name": "orders",
-            "partitions_count": "4",
+        "topic_b_dev": {
+            "topic_name": "topic_b_dev",
+            "partitions_count": "5",
             "replication_factor": 1,
             "configs": [
                 {
@@ -47,6 +48,7 @@
                     "value": 1048588
                 }
             ]
-        }
+        },
+        "ba_id": "BA18457"
     }
 ]

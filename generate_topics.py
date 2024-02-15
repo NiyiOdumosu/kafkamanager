@@ -28,6 +28,7 @@ def main(topic_path, env):
         compression_type = 'producer' if str(row['compression.type']) == "nan" else str(row['compression.type'])
         retention_ms = 86400000 if str(row['retention.ms']) == "nan" else int(row['retention.ms'])
         max_message_bytes = 1048588 if str(row['max.message.bytes']) == "nan" else int(row['max.message.bytes'])
+        ba_id = None if str(row['ba.id']) == "nan" else str(row['ba.id'])
 
         # Topic Validation Logic
         valid_compression_types = ("uncompressed", "zstd", "lz4", "snappy", "gzip", "producer")
@@ -65,7 +66,8 @@ def main(topic_path, env):
                     "value": max_message_bytes
                 }
             ]
-          }
+          },
+            "ba_id" : ba_id
         }
         topics_list.append(topic_dict)
 
@@ -75,6 +77,10 @@ def main(topic_path, env):
 
     with open(f'{topic_path}/topics_{env}.json', 'w') as json_file:
         json_file.write(json_output)
+
+    # if str(row['ba.id']) != "nan":
+    #     with open(f'{topic_path}/ba_{env}.json', 'w') as file:
+    #         file
 
 
 if __name__ == "__main__":

@@ -219,6 +219,13 @@ def add_new_topic(topic):
             logger.error(f"The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.text}" )
             f.writelines(f"{datetime.now()} - The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.text}\n")
 
+    print(topic)
+    get_application_owner(topic)
+
+
+def get_application_owner(topic):
+    print(topic)
+
 
 def update_existing_topic(topic_name, topic_config):
     """
