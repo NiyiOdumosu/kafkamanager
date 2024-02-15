@@ -6,8 +6,9 @@ import click
 
 @click.command()
 @click.argument('topic_path')
-def main(topic_path):
-    df = pd.read_csv(f'{topic_path}/topic_configs.csv')
+@click.argument('env')
+def main(topic_path, env):
+    df = pd.read_csv(f'{topic_path}/topic_configs_{env}.csv')
 
     topics_list = []
 
@@ -24,7 +25,6 @@ def main(topic_path):
         # Set defaults for topic configs
         cleanup_policy = 'delete' if str(row['cleanup.policy']) == "nan" else str(row['cleanup.policy'])
         partitions_count = '4' if str(row['partition count']) == "nan" else str(int(row['partition count']))
-        replication_factor = '3' if str(row['replication factor']) == "nan" else str(int(row['replication factor']))
         compression_type = 'producer' if str(row['compression.type']) == "nan" else str(row['compression.type'])
         retention_ms = 86400000 if str(row['retention.ms']) == "nan" else int(row['retention.ms'])
         max_message_bytes = 1048588 if str(row['max.message.bytes']) == "nan" else int(row['max.message.bytes'])
@@ -46,7 +46,7 @@ def main(topic_path):
             f"{topic_name}" : {
             "topic_name": row['topic name'],
             "partitions_count": partitions_count,
-            "replication_factor": replication_factor,
+            "replication_factor": 1,
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -73,7 +73,7 @@ def main(topic_path):
 
     print(json_output)
 
-    with open(f'{topic_path}/topics.json', 'w') as json_file:
+    with open(f'{topic_path}/topics_{env}.json', 'w') as json_file:
         json_file.write(json_output)
 
 
