@@ -5,8 +5,9 @@ import click
 
 @click.command()
 @click.argument('acl_path')
-def main(acl_path):
-    df = pd.read_csv(f'{acl_path}/acl_configs.csv')
+@click.argument('env')
+def main(acl_path, env):
+    df = pd.read_csv(f'{acl_path}/acl_configs_{env}.csv')
 
     acl_list = []
 
@@ -33,7 +34,7 @@ def main(acl_path):
 
     print(json_output)
 
-    with open(f'{acl_path}/acls.json', 'w') as json_file:
+    with open(f'{acl_path}/acls_{env}.json', 'w') as json_file:
         json_file.write(json_output)
 
 

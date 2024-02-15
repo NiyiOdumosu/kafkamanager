@@ -1,0 +1,2 @@
+topic name,partition count,retention.ms,compression.type,cleanup.policy,max.message.bytes,ba.id,ba.name
+topic_a_pvs,5,86400000,producer,compact,1048588,,
