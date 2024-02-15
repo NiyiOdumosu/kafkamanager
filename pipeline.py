@@ -2,6 +2,7 @@ from github import Github
 from deepdiff import DeepDiff
 from datetime import datetime
 from subprocess import PIPE
+from jsonschema import validate
 
 import json
 import logging
@@ -21,6 +22,7 @@ REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
 REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
 CONNECT_BASIC_AUTH_USER = os.getenv('CONNECT_BASIC_AUTH_USER')
 CONNECT_BASIC_AUTH_PASS = os.getenv('CONNECT_BASIC_AUTH_PASS')
+ENV = os.getenv('env')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -192,7 +194,7 @@ def add_new_topic(topic):
 
     # Make sure topic name is valid
     if re.match(pattern, topic_name):
-        print("The topic is alphanumeric and follows the specified delimiter rules.")
+        logger.info("The topic is alphanumeric and follows the specified delimiter rules.")
     else:
         logger.error("The topic name contains invalid characters or does not follow the specified delimiter rules.")
         exit(1)
@@ -242,15 +244,6 @@ def update_existing_topic(topic_name, topic_config):
 
     current_topic_definition = response.json()
 
-    # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
-    for config in topic_config:
-        if config['name'] == 'retention.ms' and config['value'] > 604800000:
-            logger.error(f"The retention.ms for {topic_name} is larger than 7 days")
-            exit(1)
-        if config['name'] == 'max.message.bytes' and config['value'] > 5242940:
-            logger.error(f"The max.message.bytes for {topic_name} is greater than 5 Mebibytes.")
-            exit(1)
-
     # Check if the requested update is a config change
     try:
         if'name' in topic_config[0].keys():
@@ -266,6 +259,15 @@ def update_existing_topic(topic_name, topic_config):
 
 
 def update_topic_configs(rest_topic_url, topic_config, topic_name):
+    # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
+    for config in topic_config:
+        if config['name'] == 'retention.ms' and config['value'] > 604800000:
+            logger.error(f"The retention.ms for {topic_name} is larger than 7 days")
+            exit(1)
+        if config['name'] == 'max.message.bytes' and config['value'] > 5242940:
+            logger.error(f"The max.message.bytes for {topic_name} is greater than 5 Mebibytes.")
+            exit(1)
+
     updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
     logger.info("altering configs to " + updated_Configs)
     with open('CHANGELOG.md', 'a') as f:
@@ -475,7 +477,7 @@ def build_connect_rest_url(base_url, connector_name):
     Returns:
     str: The constructed REST API URL for connectors.
     """
-    return f'{base_url}/connectors/{connector_name}/config'
+    return f'{base_url}/connectors/{connector_name}'
 
 
 def process_connector_changes(connector_file):
@@ -485,70 +487,45 @@ def process_connector_changes(connector_file):
     json_file = open(connector_file)
     json_string_template = string.Template(json_file.read())
     json_string = json_string_template.substitute(**os.environ)
+    connector_configs = json.loads(json_string)
 
-    response = requests.put(connect_rest_url, data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    # validate(instance=connector_configs, schema=json_string_template)
+
+    topic_name = connector_configs['kafka.topic'] or connector_configs['topics']
+
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
+
+    topic_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+
+    if topic_response.status_code == 200:
+        logger.info(f"Topic {topic_name} for connector {connector_name} currently exists")
+    else:
+        logger.error(f"Topic {topic_name} for connector {connector_name} currently does not exist - {str(topic_response.status_code)}" )
+        exit(1)
+
+    connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
-        if response.status_code == 201:
-            logger.info(f"The connector {connector_name} has been successfully created")
-            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully created\n")
+        if connect_response.status_code == 201 or connect_response.status_code == 200:
+            logger.info(f"The connector {connector_name} has been successfully deployed")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully deployed\n")
         else:
-            logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
-            f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
+            logger.error(f"The connector {connector_name} returned {str(connect_response.status_code)} due to the following reason: {connect_response.text}")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(connect_response.status_code)} due to the following reason: {connect_response.text}\n")
 
 
 def delete_connector(connector_file):
     # Remove a connector
     connector_name = connector_file.split("/connectors/")[1].replace(".json","")
     connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
-    json_file = open(connector_file)
-    json_string_template = string.Template(json_file.read())
-    # json_string = json_string_template.substitute(**os.environ)
 
-    response = requests.delete(f"{connect_rest_url}/{connector_name}", auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    response = requests.delete(connect_rest_url, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 204:
             logger.info(f"The connector {connector_name} has been successfully created")
-            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully created\n")
+            f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully deleted\n")
         else:
             logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
             f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}\n")
-
-
-def main():
-    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], stdout=PIPE, stderr=PIPE).stdout
-    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1',], stdout=PIPE, stderr=PIPE).stdout
-
-    latest_commit = latest_sha.decode('utf-8').rstrip('\n')
-    previous_commit = previous_sha.decode('utf-8').rstrip('\n')
-
-    files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], stdout=PIPE, stderr=PIPE).stdout
-    files_string = files.decode('utf-8')
-    pattern = re.compile(r'([AMD])\s+(.+)')
-    files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
-
-    current_topics = 'application1/topics/current-topics.json'
-    previous_topics = 'application1/topics/previous-topics.json'
-
-    current_acls = 'application1/acls/current-acls.json'
-    previous_acls = 'application1/acls/previous-acls.json'
-
-    # Get the current branch
-    branches = subprocess.run(['git', 'branch'], stdout=PIPE, stderr=PIPE).stdout
-    branches_string = branches.decode('utf-8')
-    match = re.search(r'\*\s*([^\s]+)', branches_string)
-    if match:
-        current_branch = match.group(1)
-
-    if current_branch == 'usm-onprem-dev':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "dev")
-    elif current_branch == 'usm-onprem-int':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "int")
-    elif current_branch == 'usm-onprem-pvs':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "pvs")
-    elif current_branch == 'usm-onprem-prd':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "prd")
-    else:
-        logger.info("The environment branch is not listed")
 
 
 def deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, env):
@@ -606,6 +583,30 @@ def deploy_changes(current_acls, current_topics, files_list, previous_acls, prev
         elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
+        elif (("connectors" in file) and (f"-{env}" in file) and ('R ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
+            filename = file.split(" ")[1]
+            process_connector_changes(filename)
+
+
+def main():
+    latest_sha = subprocess.run(['git', 'rev-parse', 'HEAD', ], stdout=PIPE, stderr=PIPE).stdout
+    previous_sha = subprocess.run(['git', 'rev-parse', 'HEAD~1',], stdout=PIPE, stderr=PIPE).stdout
+
+    latest_commit = latest_sha.decode('utf-8').rstrip('\n')
+    previous_commit = previous_sha.decode('utf-8').rstrip('\n')
+
+    files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], stdout=PIPE, stderr=PIPE).stdout
+    files_string = files.decode('utf-8')
+    pattern = re.compile(r'([AMD])\s+(.+)')
+    files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
+
+    current_topics = 'application1/topics/current-topics.json'
+    previous_topics = 'application1/topics/previous-topics.json'
+
+    current_acls = 'application1/acls/current-acls.json'
+    previous_acls = 'application1/acls/previous-acls.json'
+
+    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, ENV)
 
 
 if __name__ == '__main__':
