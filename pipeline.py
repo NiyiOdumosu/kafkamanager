@@ -583,7 +583,9 @@ def deploy_changes(current_acls, current_topics, files_list, previous_acls, prev
         elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
-
+        elif (("connectors" in file) and (f"-{env}" in file) and ('R ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
+            filename = file.split(" ")[1]
+            process_connector_changes(filename)
 
 
 def main():
