@@ -2,7 +2,7 @@ from github import Github
 from deepdiff import DeepDiff
 from datetime import datetime
 from subprocess import PIPE
-# from jsonschema import validate
+from jsonschema import validate
 
 import json
 import logging
@@ -22,6 +22,7 @@ REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
 REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
 CONNECT_BASIC_AUTH_USER = os.getenv('CONNECT_BASIC_AUTH_USER')
 CONNECT_BASIC_AUTH_PASS = os.getenv('CONNECT_BASIC_AUTH_PASS')
+ENV = os.getenv('env')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -603,23 +604,7 @@ def main():
     current_acls = 'application1/acls/current-acls.json'
     previous_acls = 'application1/acls/previous-acls.json'
 
-    # Get the current branch
-    branches = subprocess.run(['git', 'branch'], stdout=PIPE, stderr=PIPE).stdout
-    branches_string = branches.decode('utf-8')
-    match = re.search(r'\*\s*([^\s]+)', branches_string)
-    if match:
-        current_branch = match.group(1)
-
-    if current_branch == 'usm-onprem-dev':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "dev")
-    elif current_branch == 'usm-onprem-int':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "int")
-    elif current_branch == 'usm-onprem-pvs':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "pvs")
-    elif current_branch == 'usm-onprem-prd':
-        deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "prd")
-    else:
-        logger.info("The environment branch is not listed")
+    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, ENV)
 
 
 if __name__ == '__main__':
