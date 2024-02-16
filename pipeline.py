@@ -498,7 +498,7 @@ def process_connector_changes(connector_file):
 
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    topics = connector_configs['topics']
+    topics = connector_configs['kafka.topic']
     if ',' in topics:
         topic_list = topics.split(',')
         for topic in topic_list:
