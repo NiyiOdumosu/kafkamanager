@@ -187,7 +187,7 @@ def add_new_topic(topic):
     retention_ms = topic['configs'][2]['value']
     max_message_bytes = topic['configs'][3]['value']
 
-    if retention_ms > 604800000 or max_message_bytes > 5242940:
+    if retention_ms > 604800000 or retention_ms == -1 or  max_message_bytes > 5242940:
         logger.error(f"The retention.ms for {topic_name} is larger than 7 days OR the max message bytes is greater than 5 Mebibytes.")
         exit(1)
 
@@ -268,7 +268,7 @@ def update_existing_topic(topic_name, topic_config):
 def update_topic_configs(rest_topic_url, topic_config, topic_name):
     # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
     for config in topic_config:
-        if config['name'] == 'retention.ms' and config['value'] > 604800000:
+        if (config['name'] == 'retention.ms' and config['value'] > 604800000) or (config['name'] == 'retention.ms' and config['value'] == -1):
             logger.error(f"The retention.ms for {topic_name} is larger than 7 days")
             exit(1)
         if config['name'] == 'max.message.bytes' and config['value'] > 5242940:
@@ -498,7 +498,7 @@ def process_connector_changes(connector_file):
 
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    topics = connector_configs['kafka.topic']
+    topics = connector_configs['topics']
     if ',' in topics:
         topic_list = topics.split(',')
         for topic in topic_list:
