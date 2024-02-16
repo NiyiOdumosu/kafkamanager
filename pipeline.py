@@ -200,7 +200,7 @@ def add_new_topic(topic):
         logger.error("The topic name contains invalid characters or does not follow the specified delimiter rules.")
         exit(1)
 
-    if topic["partitions_count"] > 32:
+    if int(topic["partitions_count"]) > 32:
         logger.error(f"Partition count can not be higher than 32")
         exit(1)
 
