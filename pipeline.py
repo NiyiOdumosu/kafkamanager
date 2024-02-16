@@ -628,7 +628,7 @@ def main():
     current_acls = 'application1/acls/current-acls.json'
     previous_acls = 'application1/acls/previous-acls.json'
 
-    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "dev")
+    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, ENV)
 
 
 if __name__ == '__main__':
