@@ -17,6 +17,9 @@ REST_PROXY_URL = os.getenv('REST_URL')
 CLUSTER_ID = os.getenv('KAFKA_CLUSTER_ID')
 CONNECT_REST_URL = os.getenv('CONNECT_REST_URL')
 REPO = os.getenv('REPO')
+REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
+REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
+ENV = os.getenv('env')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -400,7 +403,29 @@ def process_connector_changes(connector_file):
     json_string_template = string.Template(json_file.read())
     json_string = json_string_template.substitute(**os.environ)
 
+    connector_configs = json.loads(json_string)
+
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
+
+    topics = connector_configs['topics']
+    if ',' in topics:
+        topic_list = topics.split(',')
+        for topic in topic_list:
+            verify_topic_in_connector(connector_name, rest_topic_url, topic)
+    else:
+        verify_topic_in_connector((connector_name, rest_topic_url, topics))
+
     logger.info(f"The connector {connector_name} will be added once the PR is merged with the following configs {json_string}")
+
+
+def verify_topic_in_connector(connector_name, rest_topic_url, topic):
+    topic_response = requests.get(rest_topic_url + topic, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+    if topic_response.status_code == 200:
+        logger.info(f"Topic {topic} for connector {connector_name} currently exists")
+    else:
+        logger.error(
+            f"Topic {topic} for connector {connector_name} currently does not exist - {str(topic_response.status_code)}")
+        exit(1)
 
 
 def delete_connector(connector_file):
@@ -414,23 +439,27 @@ def delete_connector(connector_file):
 def main(pr_id):
 
     repo, files_set, head_branch, base_branch = get_files(pr_id)
+    env = base_branch = string.split('-')[-1]
     print(files_set)
     for file in files_set:
-        if "topics.json" in file:
+        if f"topics_{env}.json" in file:
             filename = file.split("-")[0]
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
             changed_topics = find_changed_topics(head_content, head_content)
             process_changed_topics(changed_topics)
-        if "acls.json" in file:
+        if f"acls_{env}.json" in file:
             filename = file.split("-")[0]
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
             changed_acls = find_changed_acls(head_content, head_content)
             add_or_remove_acls(changed_acls)
-        if ("connector" in file) and ('removed' in file):
-            filename = file.split("-")[0]
+        if ("connectors" in file) and (f"-{env}" in file) and ('D ' in file):
+            filename = file.split(" ")[1]
             delete_connector(filename)
-        if ("connector" in file and 'modified' in file) or ("connectors" in file and 'added' in file) or ("connectors" in file and 'renamed' in file):
-            filename = file.split("-")[0]
+        elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
+            filename = file.split(" ")[1]
+            process_connector_changes(filename)
+        elif (("connectors" in file) and (f"-{env}" in file) and ('R ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
+            filename = file.split(" ")[1]
             process_connector_changes(filename)
 
 
