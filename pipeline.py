@@ -498,13 +498,13 @@ def process_connector_changes(connector_file):
 
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    topics = connector_configs['kafka.topic']
+    topics = connector_configs['topics']
     if ',' in topics:
         topic_list = topics.split(',')
         for topic in topic_list:
             verify_topic_in_connector(connector_name, rest_topic_url, topic)
     else:
-        verify_topic_in_connector((connector_name, rest_topic_url, topics))
+        verify_topic_in_connector(connector_name, rest_topic_url, topics)
 
     try:
         connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
@@ -625,7 +625,7 @@ def main():
     current_acls = 'application1/acls/current-acls.json'
     previous_acls = 'application1/acls/previous-acls.json'
 
-    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, ENV)
+    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "dev")
 
 
 if __name__ == '__main__':
