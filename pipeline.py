@@ -226,7 +226,6 @@ def add_new_topic(topic):
     return topic_name
 
 
-
 def update_existing_topic(topic_name, topic_config):
     """
     Update an existing Kafka topic based on the provided topic configuration.

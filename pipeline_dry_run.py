@@ -20,6 +20,10 @@ REPO = os.getenv('REPO')
 REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
 REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
 ENV = os.getenv('env')
+CIGNA_SERVICE_NOW_REST_URL = os.getenv('CIGNA_SERVICE_NOW_REST_URL')
+CIGNA_SERVICE_NOW_APP_OWNER_URL = os.getenv('CIGNA_SERVICE_NOW_APP_OWNER_URL')
+SERVICE_NOW_USERNAME = os.getenv('SERVICE_NOW_USERNAME')
+SERVICE_NOW_PASSWORD = os.getenv('SERVICE_NOW_PASSWORD')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -92,51 +96,16 @@ def find_changed_topics(source_topics, new_topics):
             if diff:
                 # Check if this is a partition change
                 try:
-                    if diff['values_changed']["root[\'partitions_count\']"]:
-                        for change_type, details in diff.items():
-                            change_dict = {
-                                "topic_name": topic_name,
-                                "changes": []
-                            }
-                            for change in details:
-                                if change == "root[\'partitions_count\']":
-                                    configs_changes = re.findall(r"\['(.*?)'\]", change)
-                                    change_dict["changes"].append({
-                                        configs_changes[0]: details[change]['new_value']
-                                    })
-                                else:
-                                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                                    if configs_changes:
-                                        for index in configs_changes:
-                                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                                            change_dict["changes"].append({
-                                                "name": prop_name["name"],
-                                                "value": details[change]['new_value']
-                                            })
-                        changed_topic_names.append({"type": "update", "changes": change_dict})
+                    change_dict = find_changed_partitions(diff, feature_topics_dict, topic_name)
+                    changed_topic_names.append({"type": "update", "changes": change_dict})
                 except KeyError as ke:
-                    logger.error(ke)
-                try:
-                    if diff['values_changed']["root[\'configs\'][0][\'value\']"]:
-                        for change_type, details in diff.items():
-                            change_dict = {
-                                "topic_name": topic_name,
-                                "changes": []
-                            }
+                    logger.info(f"Partitions do not need to be updated - {ke}")
+                    change_dict = find_changed_configs(diff, feature_topics_dict, topic_name)
+                    changed_topic_names.append({"type": "update", "changes": change_dict})
+                # Make sure the dict is not empty before adding it to the changed topic names list
+                if not change_dict:
+                    changed_topic_names.append({"type": "update", "changes": change_dict})
 
-                            for change in details:
-                                configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
-                                if configs_changes:
-                                    for index in configs_changes:
-                                        prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
-                                        change_dict["changes"].append({
-                                            "name": prop_name["name"],
-                                            "value": details[change]['new_value']
-                                        })
-
-                        changed_topic_names.append({"type": "update", "changes": change_dict})
-                except KeyError as ke:
-                    logger.error(ke)
         else:
             # Topic was removed
             changed_topic_names.append({topic_name: source_topics_dict.get(topic_name), "type": "removed"})
@@ -149,17 +118,64 @@ def find_changed_topics(source_topics, new_topics):
     return changed_topic_names
 
 
+def find_changed_partitions(diff, feature_topics_dict, topic_name):
+    if diff['values_changed']["root[\'partitions_count\']"]:
+        for change_type, details in diff.items():
+            change_dict = {
+                "topic_name": topic_name,
+                "changes": []
+            }
+            for change in details:
+                if change == "root[\'partitions_count\']":
+                    configs_changes = re.findall(r"\['(.*?)'\]", change)
+                    change_dict["changes"].append({
+                        configs_changes[0]: details[change]['new_value']
+                    })
+                else:
+                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                    if configs_changes:
+                        for index in configs_changes:
+                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                            change_dict["changes"].append({
+                                "name": prop_name["name"],
+                                "value": details[change]['new_value']
+                            })
+    return change_dict
+
+
+def find_changed_configs(diff, feature_topics_dict, topic_name):
+    try:
+        if diff['values_changed']:
+            for change_type, details in diff.items():
+                change_dict = {
+                    "topic_name": topic_name,
+                    "changes": []
+                }
+
+                for change in details:
+                    configs_changes = re.findall(r"configs'\]\[(.*)\]\[", change)
+                    if configs_changes:
+                        for index in configs_changes:
+                            prop_name = feature_topics_dict[topic_name]['configs'][int(index)]
+                            change_dict["changes"].append({
+                                "name": prop_name["name"],
+                                "value": details[change]['new_value']
+                            })
+    except KeyError as ke:
+        logger.error(f"Configs could not be updated due to - {ke}")
+    return change_dict
+
+
 def process_changed_topics(changed_topic_names):
     for i, topic in enumerate(changed_topic_names):
-        topic_name = list(topic.keys())[i]
-        topic_configs = list(topic.values())[i]
+        topic_name = list(topic.keys())[0]
+        topic_configs = list(topic.values())[0]
         if topic['type'] == 'new':
             add_new_topic(topic_configs)
         elif topic['type'] == 'update':
             update_existing_topic(topic['changes']['topic_name'], topic['changes']['changes'])
         else:
             delete_topic(topic_name)
-
 
 
 def build_topic_rest_url(base_url, cluster_id):
@@ -184,6 +200,27 @@ def add_new_topic(topic):
     - topic (dict): Dictionary representing the configuration of the new Kafka topic.
 
     """
+    topic_name = topic["topic_name"]
+
+    retention_ms = topic['configs'][2]['value']
+    max_message_bytes = topic['configs'][3]['value']
+
+    if retention_ms > 604800000 or retention_ms == -1 or  max_message_bytes > 5242940:
+        logger.error(f"The retention.ms for {topic_name} is larger than 7 days OR the max message bytes is greater than 5 Mebibytes.")
+        exit(1)
+
+    pattern = r'^[a-zA-Z0-9]+(?:[_.-][a-zA-Z0-9]+)*$'
+
+    # Make sure topic name is valid
+    if re.match(pattern, topic_name):
+        logger.info("The topic is alphanumeric and follows the specified delimiter rules.")
+    else:
+        logger.error("The topic name contains invalid characters or does not follow the specified delimiter rules.")
+        exit(1)
+
+    if int(topic["partitions_count"]) > 32:
+        logger.error(f"Partition count can not be higher than 32")
+        exit(1)
 
     logger.info(f"The topic {topic['topic_name']} will be created once the PR is merged")
 
@@ -212,14 +249,34 @@ def update_existing_topic(topic_name, topic_config):
 
     current_topic_definition = response.json()
     # Check if the requested update is a config change
-    if 'partitions_count' in topic_config[0].keys():
+    try:
+        if'name' in topic_config[0].keys():
+            update_topic_configs(rest_topic_url, topic_config, topic_name)
+        elif ('partitions_count' in topic_config[0].keys()) and ('name' in topic_config[1].keys()):
+            update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
+            topic_config.pop(0)
+            update_topic_configs(rest_topic_url, topic_config, topic_name)
+    except IndexError:
+        logger.info(f"Partition count for {topic_name} needs to be updated")
+    if 'partitions_count' in topic_config[0].keys() and len(topic_config[0].keys()) == 1:
         update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
-    else:
-        updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
-        logger.info(f"The topic {topic_name} will be updated with the following topic configs {updated_Configs} once the PR is merged")
 
 
-def update_partition_count(current_topic_definition, rest_topic_url, partition_count, topic_name):
+def update_topic_configs(rest_topic_url, topic_config, topic_name):
+    # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
+    for config in topic_config:
+        if (config['name'] == 'retention.ms' and config['value'] > 604800000) or (config['name'] == 'retention.ms' and config['value'] == -1):
+            logger.error(f"The retention.ms for {topic_name} is larger than 7 days")
+            exit(1)
+        if config['name'] == 'max.message.bytes' and config['value'] > 5242940:
+            logger.error(f"The max.message.bytes for {topic_name} is greater than 5 Mebibytes.")
+            exit(1)
+
+    updated_Configs = "{\"data\":" + json.dumps(topic_config) + "}"
+    logger.info("altering configs to " + updated_Configs)
+
+
+def update_partition_count(current_topic_definition, partition_count, topic_name):
     """
     Update the partition count for a Kafka topic based on the provided configuration.
 
@@ -237,14 +294,20 @@ def update_partition_count(current_topic_definition, rest_topic_url, partition_c
     # Check if the requested update is the partition count
     try:
         new_partition_count = int(partition_count)
+        if new_partition_count == current_partitions_count:
+            logger.info(f"Requested partition count and current partition count is the same - {new_partition_count}")
+        if new_partition_count > 32:
+            logger.error(f"Partition count can not be higher than 32")
+            exit(1)
         if new_partition_count > current_partitions_count:
             logger.info(f"A requested increase of partitions for topic  {topic_name} is from "
-                        f"{str(current_partitions_count)} to {str(new_partition_count)}. This will be applied after the PR is merged.")
+                        f"{str(current_partitions_count)} to {str(new_partition_count)}")
         elif new_partition_count < current_partitions_count:
-            logger.error(f"Cannot reduce partition count from {str(current_partitions_count)} to {str(new_partition_count)} for a given topic")
+            logger.error("Cannot reduce partition count for a given topic")
             exit(1)
     except Exception as e:
         logger.error("Failed due to " + e)
+
 
 
 def delete_topic(topic_name):
@@ -337,16 +400,31 @@ def add_new_acl(acl):
     logger.info(f"The acl {acl[0]} will be created once the PR is merged")
 
 
-def get_application_owner(filename):
-    df = pd.read_csv(filename)
-    for index, row in df.iterrows():
-        ba_id = row['ba.id']
+def build_service_now_rest_url():
+    return f'{CIGNA_SERVICE_NOW_REST_URL}'
 
-    ## service now logic
 
-    ## response with app owner
-    # with open(f'{filename}_application_owner', 'w') as json_file:
-# json_file.write(json_output)
+# def get_application_owner(filename):
+#     df = pd.read_csv(filename)
+#     for index, row in df.iterrows():
+#         if row['ba.id'] != 'nan':
+#             ba_id = row['ba.id']
+#             logger.info(f"The ba.id is {ba_id}")
+#
+#     ## service now logic
+#     first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + ba_id, auth=(SERVICE_NOW_PASSWORD, SERVICE_NOW_USERNAME))
+#
+#     if first_response.get("result") == []:
+#         logger.error(f"The ba.id {ba_id} does not exist in service now")
+#         exit(1)
+#     else:
+#         logger.info(f"The ba.id {ba_id} does not exist in service now")
+#     service_now_request = first_response['result'][0]['it_application_owner']['link']
+#
+#     second_response = requests.get(service_now_request, auth=(SERVICE_NOW_PASSWORD, SERVICE_NOW_USERNAME))
+#     application_owners = second_response['u_addl_email_addresses']
+#     print(application_owners)
+
 
 def delete_acl(acl):
     """
@@ -447,6 +525,8 @@ def main(pr_id):
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
             changed_topics = find_changed_topics(head_content, head_content)
             process_changed_topics(changed_topics)
+        # if f"topic_configs_{env}.json" in file:
+        #     get_application_owner(file)
         if f"acls_{env}.json" in file:
             filename = file.split("-")[0]
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
