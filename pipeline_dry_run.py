@@ -2,10 +2,11 @@ from github import Github
 from deepdiff import DeepDiff
 
 import click
+import json
 import logging
 import os
+import pandas as pd
 import requests
-import json
 import re
 import string
 
@@ -332,6 +333,17 @@ def add_new_acl(acl):
     """
     logger.info(f"The acl {acl[0]} will be created once the PR is merged")
 
+
+def get_application_owner(filename):
+    df = pd.read_csv(filename)
+    for index, row in df.iterrows():
+        ba_id = row['ba.id']
+
+    ## service now logic
+
+    ## response with app owner
+    # with open(f'{filename}_application_owner', 'w') as json_file:
+# json_file.write(json_output)
 
 def delete_acl(acl):
     """

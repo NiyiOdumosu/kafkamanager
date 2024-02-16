@@ -1,6 +1,6 @@
 {
   "connector.class": "io.confluent.kafka.connect.datagen.DatagenConnector",
-  "kafka.topic" : "my-orders",
+  "kafka.topic" : "test,rest,best",
   "value.converter": "org.apache.kafka.connect.json.JsonConverter",
   "output.data.format" : "JSON",
   "quickstart" : "ORDERS",

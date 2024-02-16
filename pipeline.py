@@ -4,13 +4,14 @@ from datetime import datetime
 from subprocess import PIPE
 from jsonschema import validate
 
+
 import json
 import logging
 import os
-import string
-import subprocess
 import re
 import requests
+import string
+import subprocess
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
@@ -199,6 +200,10 @@ def add_new_topic(topic):
         logger.error("The topic name contains invalid characters or does not follow the specified delimiter rules.")
         exit(1)
 
+    if topic["partitions_count"] > 32:
+        logger.error(f"Partition count can not be higher than 32")
+        exit(1)
+
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
     get_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
@@ -218,13 +223,8 @@ def add_new_topic(topic):
         else:
             logger.error(f"The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.text}" )
             f.writelines(f"{datetime.now()} - The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.text}\n")
+    return topic_name
 
-    print(topic)
-    get_application_owner(topic)
-
-
-def get_application_owner(topic):
-    print(topic)
 
 
 def update_existing_topic(topic_name, topic_config):
@@ -496,21 +496,21 @@ def process_connector_changes(connector_file):
     json_string = json_string_template.substitute(**os.environ)
     connector_configs = json.loads(json_string)
 
-    # validate(instance=connector_configs, schema=json_string_template)
-
-    topic_name = connector_configs['kafka.topic'] or connector_configs['topics']
-
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    topic_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
-
-    if topic_response.status_code == 200:
-        logger.info(f"Topic {topic_name} for connector {connector_name} currently exists")
+    topics = connector_configs['topics']
+    if ',' in topics:
+        topic_list = topics.split(',')
+        for topic in topic_list:
+            verify_topic_in_connector(connector_name, rest_topic_url, topic)
     else:
-        logger.error(f"Topic {topic_name} for connector {connector_name} currently does not exist - {str(topic_response.status_code)}" )
-        exit(1)
+        verify_topic_in_connector((connector_name, rest_topic_url, topics))
 
-    connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    try:
+        connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    except json.decoder.JSONDecodeError as error:
+        # if the connector Json is invalid, log the error
+        logger.error(f"Invalid connector JSON due to - {error}")
     with open('CHANGELOG.md', 'a') as f:
         if connect_response.status_code == 201 or connect_response.status_code == 200:
             logger.info(f"The connector {connector_name} has been successfully deployed")
@@ -520,15 +520,30 @@ def process_connector_changes(connector_file):
             f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(connect_response.status_code)} due to the following reason: {connect_response.text}\n")
 
 
+def verify_topic_in_connector(connector_name, rest_topic_url, topic):
+        topic_response = requests.get(rest_topic_url + topic, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+        if topic_response.status_code == 200:
+            logger.info(f"Topic {topic} for connector {connector_name} currently exists")
+        else:
+            logger.error(
+                f"Topic {topic} for connector {connector_name} currently does not exist - {str(topic_response.status_code)}")
+            exit(1)
+
+
 def delete_connector(connector_file):
     # Remove a connector
     connector_name = connector_file.split("/connectors/")[1].replace(".json","")
     connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
 
-    response = requests.delete(connect_rest_url, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    try:
+        response = requests.delete(connect_rest_url, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    except json.decoder.JSONDecodeError as error:
+        # if the connector Json is invalid, log the error
+        logger.error(f"Invalid connector JSON due to - {error}")
+
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 204:
-            logger.info(f"The connector {connector_name} has been successfully created")
+            logger.info(f"The connector {connector_name} has been successfully deleted")
             f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully deleted\n")
         else:
             logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
@@ -613,7 +628,7 @@ def main():
     current_acls = 'application1/acls/current-acls.json'
     previous_acls = 'application1/acls/previous-acls.json'
 
-    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, ENV)
+    deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, "dev")
 
 
 if __name__ == '__main__':
