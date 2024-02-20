@@ -549,7 +549,6 @@ def main(pr_id):
             delete_connector(filename)
         elif (("connectors" in file) and (f"-{env}" in file) and ('added' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('modified' in file)):
             filename = file.rsplit("-", 1)[0]
-            print(filename)
             process_connector_changes(filename)
 
 
