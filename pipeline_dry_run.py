@@ -537,14 +537,12 @@ def main(pr_id):
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
             changed_acls = find_changed_acls(head_content, head_content)
             add_or_remove_acls(changed_acls)
-        if ("connectors" in file) and (f"-{env}" in file) and ('D ' in file):
-            filename = file.split(" ")[1]
+        if ("connectors" in file) and (f"-{env}" in file) and ('removed' in file):
+            filename = file.rsplit("-", 1)[0]
             delete_connector(filename)
-        elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
-            filename = file.split(" ")[1]
-            process_connector_changes(filename)
-        elif (("connectors" in file) and (f"-{env}" in file) and ('R ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
-            filename = file.split(" ")[1]
+        elif (("connectors" in file) and (f"-{env}" in file) and ('added' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('modified' in file)):
+            filename = file.rsplit("-", 1)[0]
+            print(filename)
             process_connector_changes(filename)
 
 
