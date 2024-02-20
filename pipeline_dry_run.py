@@ -404,26 +404,26 @@ def build_service_now_rest_url():
     return f'{CIGNA_SERVICE_NOW_REST_URL}'
 
 
-# def get_application_owner(filename):
-#     df = pd.read_csv(filename)
-#     for index, row in df.iterrows():
-#         if row['ba.id'] != 'nan':
-#             ba_id = row['ba.id']
-#             logger.info(f"The ba.id is {ba_id}")
-#
-#     ## service now logic
-#     first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + ba_id, auth=(SERVICE_NOW_PASSWORD, SERVICE_NOW_USERNAME))
-#
-#     if first_response.get("result") == []:
-#         logger.error(f"The ba.id {ba_id} does not exist in service now")
-#         exit(1)
-#     else:
-#         logger.info(f"The ba.id {ba_id} does not exist in service now")
-#     service_now_request = first_response['result'][0]['it_application_owner']['link']
-#
-#     second_response = requests.get(service_now_request, auth=(SERVICE_NOW_PASSWORD, SERVICE_NOW_USERNAME))
-#     application_owners = second_response['u_addl_email_addresses']
-#     print(application_owners)
+def get_application_owner(filename):
+    df = pd.read_csv(filename)
+    for index, row in df.iterrows():
+        if row['ba.id'] != 'nan':
+            ba_id = row['ba.id']
+            logger.info(f"The ba.id is {ba_id}")
+
+    ## service now logic
+    first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + ba_id, auth=(SERVICE_NOW_PASSWORD, SERVICE_NOW_USERNAME))
+
+    if first_response.get("result") == []:
+        logger.error(f"The ba.id {ba_id} does not exist in service now")
+        exit(1)
+    else:
+        logger.info(f"The ba.id {ba_id} does not exist in service now")
+    service_now_request = first_response['result'][0]['it_application_owner']['link']
+
+    second_response = requests.get(service_now_request, auth=(SERVICE_NOW_PASSWORD, SERVICE_NOW_USERNAME))
+    application_owners = second_response['u_addl_email_addresses']
+    print(application_owners)
 
 
 def delete_acl(acl):
@@ -517,7 +517,7 @@ def delete_connector(connector_file):
 def main(pr_id):
 
     repo, files_set, head_branch, base_branch = get_files(pr_id)
-    env = base_branch = string.split('-')[-1]
+    env = base_branch.split('-')[-1]
     print(files_set)
     for file in files_set:
         if f"topics_{env}.json" in file:
@@ -525,8 +525,8 @@ def main(pr_id):
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
             changed_topics = find_changed_topics(head_content, head_content)
             process_changed_topics(changed_topics)
-        # if f"topic_configs_{env}.json" in file:
-        #     get_application_owner(file)
+        if f"topic_configs_{env}.csv" in file:
+            get_application_owner(file)
         if f"acls_{env}.json" in file:
             filename = file.split("-")[0]
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
