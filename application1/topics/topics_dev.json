@@ -47,7 +47,31 @@
                     "value": 1048588
                 }
             ]
-        },
-        "ba.id" : "test123"
+        }
+    },
+    {
+        "topic_d_dev": {
+            "topic_name": "topic_d_dev",
+            "partitions_count": "5",
+            "replication_factor": 1,
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "delete"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "producer"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": 86400000
+                },
+                {
+                    "name": "max.message.bytes",
+                    "value": 1048588
+                }
+            ]
+        }
     }
 ]

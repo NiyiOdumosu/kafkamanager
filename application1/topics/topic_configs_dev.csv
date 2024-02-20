@@ -1,3 +1,4 @@
 topic name,partition count,retention.ms,compression.type,cleanup.policy,max.message.bytes,ba.id,ba.name
 topic_a_dev,5,86400000,producer,compact,1048588,BA18457,
 topic_b_dev,5,86400000,producer,delete,1048588,BA18457,
+topic_d_dev,5,86400000,producer,delete,1048588,BA18457,
