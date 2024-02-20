@@ -489,13 +489,17 @@ def process_connector_changes(connector_file):
 
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    topics = connector_configs['topics']
-    if ',' in topics:
-        topic_list = topics.split(',')
-        for topic in topic_list:
-            verify_topic_in_connector(connector_name, rest_topic_url, topic)
-    else:
-        verify_topic_in_connector((connector_name, rest_topic_url, topics))
+    try:
+        if connector_configs['topics'] or connector_configs['topic.whitelist']:
+            topics = connector_configs['topics']
+            if ',' in topics:
+                topic_list = topics.split(',')
+                for topic in topic_list:
+                    verify_topic_in_connector(connector_name, rest_topic_url, topic)
+            else:
+                verify_topic_in_connector(connector_name, rest_topic_url, topics)
+    except KeyError:
+        logger.info("The topic field name for this connector is not topics or topic.whitelist")
 
     logger.info(f"The connector {connector_name} will be added once the PR is merged with the following configs {json_string}")
 
