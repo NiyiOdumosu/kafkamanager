@@ -309,7 +309,6 @@ def update_partition_count(current_topic_definition, partition_count, topic_name
         logger.error("Failed due to " + e)
 
 
-
 def delete_topic(topic_name):
     """
     Delete a Kafka topic based on the provided topic configuration.
@@ -326,12 +325,11 @@ def delete_topic(topic_name):
     """
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    get_response = requests.get(rest_topic_url + topic_name)
+    get_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
     if get_response.status_code == 200:
-        logger.info(f"Response code is {str(get_response.status_code)}")
         logger.info(f"The topic {topic_name} will be deleted once the PR is merged.")
     else:
-        logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
+        logger.error(f"Topic {topic_name} will not be deleted because it doesnt exist. Status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
 
 
 def find_changed_acls(source_acls, feature_acls):
@@ -421,7 +419,6 @@ def get_application_owner(filename):
         logger.info(f"The ba.id is {ba_id} ")
 
     first_result = json.loads(first_response.text)
-    print(first_result["result"])
     service_now_request = first_result["result"][0]["it_application_owner"]["link"]
 
     second_response = requests.get(service_now_request, auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
@@ -446,7 +443,7 @@ def delete_acl(acl):
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    get_response = requests.get(rest_acl_url + acl['topic_name']) # change this
+    get_response = requests.get(rest_acl_url + acl['topic_name'], auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
     if get_response.status_code == 200:
         logger.info(f"Response code is {str(get_response.status_code)}")
         logger.info(f"The connector {acl[0].keys()} will be removed once the PR is merged.")
@@ -529,12 +526,11 @@ def main(pr_id):
 
     repo, files_set, head_branch, base_branch = get_files(pr_id)
     env = base_branch.split('-')[-1]
-    print(files_set)
     for file in files_set:
         if f"topics_{env}.json" in file:
             filename = file.split("-")[0]
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
-            changed_topics = find_changed_topics(head_content, head_content)
+            changed_topics = find_changed_topics(head_content, base_content)
             process_changed_topics(changed_topics)
         if f"topic_configs_{env}.csv" in file:
             filename = file.split("-")[0]
@@ -542,7 +538,7 @@ def main(pr_id):
         if f"acls_{env}.json" in file:
             filename = file.split("-")[0]
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
-            changed_acls = find_changed_acls(head_content, head_content)
+            changed_acls = find_changed_acls(head_content, base_content)
             add_or_remove_acls(changed_acls)
         if ("connectors" in file) and (f"-{env}" in file) and ('removed' in file):
             filename = file.rsplit("-", 1)[0]
