@@ -4,13 +4,14 @@ from datetime import datetime
 from subprocess import PIPE
 from jsonschema import validate
 
+
 import json
 import logging
 import os
-import string
-import subprocess
 import re
 import requests
+import string
+import subprocess
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
@@ -186,7 +187,7 @@ def add_new_topic(topic):
     retention_ms = topic['configs'][2]['value']
     max_message_bytes = topic['configs'][3]['value']
 
-    if retention_ms > 604800000 or max_message_bytes > 5242940:
+    if retention_ms > 604800000 or retention_ms == -1 or  max_message_bytes > 5242940:
         logger.error(f"The retention.ms for {topic_name} is larger than 7 days OR the max message bytes is greater than 5 Mebibytes.")
         exit(1)
 
@@ -197,6 +198,10 @@ def add_new_topic(topic):
         logger.info("The topic is alphanumeric and follows the specified delimiter rules.")
     else:
         logger.error("The topic name contains invalid characters or does not follow the specified delimiter rules.")
+        exit(1)
+
+    if int(topic["partitions_count"]) > 32:
+        logger.error(f"Partition count can not be higher than 32")
         exit(1)
 
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
@@ -218,6 +223,7 @@ def add_new_topic(topic):
         else:
             logger.error(f"The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.text}" )
             f.writelines(f"{datetime.now()} - The topic {topic['topic_name']} returned {str(response.status_code)} due to the follwing reason: {response.text}\n")
+    return topic_name
 
 
 def update_existing_topic(topic_name, topic_config):
@@ -261,7 +267,7 @@ def update_existing_topic(topic_name, topic_config):
 def update_topic_configs(rest_topic_url, topic_config, topic_name):
     # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
     for config in topic_config:
-        if config['name'] == 'retention.ms' and config['value'] > 604800000:
+        if (config['name'] == 'retention.ms' and config['value'] > 604800000) or (config['name'] == 'retention.ms' and config['value'] == -1):
             logger.error(f"The retention.ms for {topic_name} is larger than 7 days")
             exit(1)
         if config['name'] == 'max.message.bytes' and config['value'] > 5242940:
@@ -489,21 +495,28 @@ def process_connector_changes(connector_file):
     json_string = json_string_template.substitute(**os.environ)
     connector_configs = json.loads(json_string)
 
-    # validate(instance=connector_configs, schema=json_string_template)
-
-    topic_name = connector_configs['kafka.topic'] or connector_configs['topics']
-
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    topic_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+    try:
+        topics = connector_configs['topics']
+    except KeyError:
+        logger.info("The topic field name for this connector is not topics or topic.whitelist")
+    try:
+        topics = connector_configs['topic.whitelist']
+    except KeyError:
+        logger.info("The topic field name for this connector is not topics or topic.whitelist")
 
-    if topic_response.status_code == 200:
-        logger.info(f"Topic {topic_name} for connector {connector_name} currently exists")
+    if ',' in topics:
+        topic_list = topics.split(',')
+        for topic in topic_list:
+            verify_topic_in_connector(connector_name, rest_topic_url, topic)
     else:
-        logger.error(f"Topic {topic_name} for connector {connector_name} currently does not exist - {str(topic_response.status_code)}" )
-        exit(1)
-
-    connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+        verify_topic_in_connector(connector_name, rest_topic_url, topics)
+    try:
+        connect_response = requests.put(f"{connect_rest_url}/config", data=json_string, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    except json.decoder.JSONDecodeError as error:
+        # if the connector Json is invalid, log the error
+        logger.error(f"Invalid connector JSON due to - {error}")
     with open('CHANGELOG.md', 'a') as f:
         if connect_response.status_code == 201 or connect_response.status_code == 200:
             logger.info(f"The connector {connector_name} has been successfully deployed")
@@ -513,15 +526,30 @@ def process_connector_changes(connector_file):
             f.writelines(f"{datetime.now()} - The connector {connector_name} returned {str(connect_response.status_code)} due to the following reason: {connect_response.text}\n")
 
 
+def verify_topic_in_connector(connector_name, rest_topic_url, topic):
+        topic_response = requests.get(rest_topic_url + topic, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+        if topic_response.status_code == 200:
+            logger.info(f"Topic {topic} for connector {connector_name} currently exists")
+        else:
+            logger.error(
+                f"Topic {topic} for connector {connector_name} currently does not exist - {str(topic_response.status_code)}")
+            exit(1)
+
+
 def delete_connector(connector_file):
     # Remove a connector
     connector_name = connector_file.split("/connectors/")[1].replace(".json","")
     connect_rest_url = build_connect_rest_url(CONNECT_REST_URL, connector_name)
 
-    response = requests.delete(connect_rest_url, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    try:
+        response = requests.delete(connect_rest_url, auth=(CONNECT_BASIC_AUTH_USER, CONNECT_BASIC_AUTH_PASS), headers=HEADERS)
+    except json.decoder.JSONDecodeError as error:
+        # if the connector Json is invalid, log the error
+        logger.error(f"Invalid connector JSON due to - {error}")
+
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 204:
-            logger.info(f"The connector {connector_name} has been successfully created")
+            logger.info(f"The connector {connector_name} has been successfully deleted")
             f.writelines(f"{datetime.now()} - The connector {connector_name} has been successfully deleted\n")
         else:
             logger.error(f"The connector {connector_name} returned {str(response.status_code)} due to the following reason: {response.text}")
@@ -581,9 +609,6 @@ def deploy_changes(current_acls, current_topics, files_list, previous_acls, prev
             filename = file.split(" ")[1]
             delete_connector(filename)
         elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
-            filename = file.split(" ")[1]
-            process_connector_changes(filename)
-        elif (("connectors" in file) and (f"-{env}" in file) and ('R ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
 
