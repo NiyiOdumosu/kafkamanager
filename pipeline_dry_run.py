@@ -410,9 +410,9 @@ def get_application_owner(filename):
             break
 
     ## service now logic
-    first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + ba_id, auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
+    first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + str(ba_id), auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
 
-    if first_response.text == []:
+    if first_response.text == "{\"result\":[]}":
         logger.error(f"The ba.id {ba_id} does not exist in service now")
         exit(1)
     else:
