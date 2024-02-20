@@ -409,21 +409,25 @@ def get_application_owner(filename):
     for index, row in df.iterrows():
         if row['ba.id'] != 'nan':
             ba_id = row['ba.id']
-            logger.info(f"The ba.id is {ba_id}")
+            break
 
     ## service now logic
-    first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + ba_id, auth=(SERVICE_NOW_PASSWORD, SERVICE_NOW_USERNAME))
+    first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + ba_id, auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
 
-    if first_response.get("result") == []:
+    if first_response.text == []:
         logger.error(f"The ba.id {ba_id} does not exist in service now")
         exit(1)
     else:
-        logger.info(f"The ba.id {ba_id} does not exist in service now")
-    service_now_request = first_response['result'][0]['it_application_owner']['link']
+        logger.info(f"The ba.id is {ba_id} ")
 
-    second_response = requests.get(service_now_request, auth=(SERVICE_NOW_PASSWORD, SERVICE_NOW_USERNAME))
-    application_owners = second_response['u_addl_email_addresses']
-    print(application_owners)
+    first_result = json.loads(first_response.text)
+    print(first_result["result"])
+    service_now_request = first_result["result"][0]["it_application_owner"]["link"]
+
+    second_response = requests.get(service_now_request, auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
+    second_result = json.loads(second_response.text)
+    application_owners = second_result["result"]['u_addl_email_addresses']
+    logger.info(f"Application owner contact info is - {application_owners}")
 
 
 def delete_acl(acl):
@@ -526,7 +530,8 @@ def main(pr_id):
             changed_topics = find_changed_topics(head_content, head_content)
             process_changed_topics(changed_topics)
         if f"topic_configs_{env}.csv" in file:
-            get_application_owner(file)
+            filename = file.split("-")[0]
+            get_application_owner(filename)
         if f"acls_{env}.json" in file:
             filename = file.split("-")[0]
             head_content, base_content = get_content_from_branches(repo, filename, head_branch, base_branch)
