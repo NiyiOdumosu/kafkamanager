@@ -9,5 +9,16 @@
             "operation": "WRITE",
             "permission": "ALLOW"
         }
+    },
+    {
+        "User:clientrestproxy-topic_b_dev-WRITE": {
+            "resource_type": "TOPIC",
+            "resource_name": "topic_b_dev",
+            "pattern_type": "LITERAL",
+            "principal": "User:clientrestproxy",
+            "host": "*",
+            "operation": "WRITE",
+            "permission": "ALLOW"
+        }
     }
 ]
