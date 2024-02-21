@@ -23,7 +23,9 @@ REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
 REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
 CONNECT_BASIC_AUTH_USER = os.getenv('CONNECT_BASIC_AUTH_USER')
 CONNECT_BASIC_AUTH_PASS = os.getenv('CONNECT_BASIC_AUTH_PASS')
-ENV = os.getenv('env')
+ENV = os.getenv('ENV')
+CLIENT_PROPERTIES = os.getenv('CLIENT_PROPERTIES')
+BOOTSTRAP_URL = os.getenv('BOOTSTRAP_URL')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -426,7 +428,17 @@ def add_new_acl(acl):
 
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
+    user_principal = acl['principal'].split(':')[-1]
+
+    get_users_command = f'/etc/kafka/bin/kafka-configs.sh --bootstrap-server {BOOTSTRAP_URL} --describe --entity-type --command-config {CLIENT_PROPERTIES} | grep {user_principal}'
+    # user_output = subprocess.run(['/etc/kafka/bin/kafka-configs.sh', '--bootstrap-server', BOOTSTRAP_URL, '--describe', '--entity-type', 'users', '--command-config', CLIENT_PROPERTIES, '|', 'grep', user_principal], stdout=PIPE, stderr=PIPE).stdout
+    user_output = subprocess.run(get_users_command, stdout=PIPE, stderr=PIPE).stdout
+    if user_principal in user_output:
+        password = subprocess.run(['export', 'PASSWORD="$(cat /dev/urandom | tr -dc \'a-zA-Z0-9\' | fold -w 8 | head -n 1)"'], stdout=PIPE, stderr=PIPE).stdout
+        subprocess.run(['/etc/kafka/bin/kafka-configs.sh', '--bootstrap-server', BOOTSTRAP_URL, '--alter', '--add-config', f'SCRAM-SHA-256=[password=${password}],SCRAM-SHA-512=[password=${password}]', '--entity-type users', '--entity-name', user_principal, '--command-config', CLIENT_PROPERTIES], stdout=PIPE, stderr=PIPE).stdout
+        logger.info(f"Password for {user_principal} is {password}")
     acl_json = json.dumps(acl)
+
     response = requests.post(rest_acl_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=acl_json, headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 201:
