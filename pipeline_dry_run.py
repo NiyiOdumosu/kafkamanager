@@ -425,7 +425,7 @@ def get_application_owner(filename):
         gh = Github(GITHUB_TOKEN)
         repo = gh.get_repo("NiyiOdumosu/kafka-application-owner")
         all_files = []
-        contents = repo.get_contents()
+        contents = repo.get_contents("")
         while contents:
             file_content = contents.pop(0)
             if file_content.type == "dir":
@@ -435,15 +435,18 @@ def get_application_owner(filename):
                 all_files.append(str(file).replace('ContentFile(path="','').replace('")',''))
 
         with open('application_owners.csv', 'a') as file:
-            file.writelines(f"{ba_id}, {application_owners}\n")
-            content = file.read()
+            file.writelines(f"{ba_id}, \"{application_owners}\"\n")
+
+        with open('application_owners.csv', 'r') as f:
+            content = f.read()
+
         git_file = 'application_owners.csv'
         if git_file in all_files:
             contents = repo.get_contents(git_file)
             repo.update_file(contents.path, "Added new application owner", content, contents.sha,  branch="main")
             logger.info(f'Updated application owner to {git_file}')
         else:
-            repo.create_file(git_file, "committing files", content, branch="master")
+            repo.create_file(git_file, "committing files", content, branch="main")
             logger.info(f'Created {git_file}')
 
     else:
