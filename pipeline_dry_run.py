@@ -414,7 +414,6 @@ def get_application_owner(filename):
 
     if first_response.text == "{\"result\":[]}":
         logger.error(f"The ba.id {ba_id} does not exist in service now")
-        exit(1)
     else:
         logger.info(f"The ba.id is {ba_id} ")
 
