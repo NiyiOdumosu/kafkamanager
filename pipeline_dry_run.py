@@ -394,7 +394,7 @@ def add_new_acl(acl):
     - acl (dict): Dictionary representing the configuration of the new Kafka ACL.
 
     """
-    logger.info(f"The acl {acl[0]} will be created once the PR is merged")
+    logger.info(f"The acl {acl} will be created once the PR is merged")
 
 
 def build_service_now_rest_url():
@@ -441,10 +441,10 @@ def delete_acl(acl):
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
 
-    get_response = requests.get(rest_acl_url + acl['topic_name'], auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+    get_response = requests.get(rest_acl_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
     if get_response.status_code == 200:
         logger.info(f"Response code is {str(get_response.status_code)}")
-        logger.info(f"The connector {acl[0].keys()} will be removed once the PR is merged.")
+        logger.info(f"The acl {acl} will be removed once the PR is merged.")
     else:
         logger.error(f"Failed due to the following status code {str(get_response.status_code)} and reason {str(get_response.reason)}" )
 
