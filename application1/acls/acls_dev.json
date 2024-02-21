@@ -1,8 +1,8 @@
 [
     {
-        "User:clientrestproxy-topic_a-WRITE": {
+        "User:clientrestproxy-topic_a_dev-WRITE": {
             "resource_type": "TOPIC",
-            "resource_name": "topic_a",
+            "resource_name": "topic_a_dev",
             "pattern_type": "LITERAL",
             "principal": "User:clientrestproxy",
             "host": "*",
