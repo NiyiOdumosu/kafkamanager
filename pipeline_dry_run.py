@@ -253,16 +253,16 @@ def update_existing_topic(topic_name, topic_config):
         if'name' in topic_config[0].keys():
             update_topic_configs(rest_topic_url, topic_config, topic_name)
         elif ('partitions_count' in topic_config[0].keys()) and ('name' in topic_config[1].keys()):
-            update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
+            update_partition_count(current_topic_definition, topic_config[0]['partitions_count'], topic_name)
             topic_config.pop(0)
-            update_topic_configs(rest_topic_url, topic_config, topic_name)
+            update_topic_configs(topic_config, topic_name)
     except IndexError:
         logger.info(f"Partition count for {topic_name} needs to be updated")
     if 'partitions_count' in topic_config[0].keys() and len(topic_config[0].keys()) == 1:
         update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
 
 
-def update_topic_configs(rest_topic_url, topic_config, topic_name):
+def update_topic_configs(topic_config, topic_name):
     # Check if retention.ms is greater than 7 days and if max.message.bytes is more than 5 Mebibytes
     for config in topic_config:
         if (config['name'] == 'retention.ms' and config['value'] > 604800000) or (config['name'] == 'retention.ms' and config['value'] == -1):
@@ -410,21 +410,20 @@ def get_application_owner(filename):
             break
 
     ## service now logic
-    first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + ba_id, auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
+    first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + str(ba_id), auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
 
-    if first_response.text == []:
+    if first_response.text == "{\"result\":[]}":
         logger.error(f"The ba.id {ba_id} does not exist in service now")
-        exit(1)
     else:
         logger.info(f"The ba.id is {ba_id} ")
 
-    first_result = json.loads(first_response.text)
-    service_now_request = first_result["result"][0]["it_application_owner"]["link"]
+        first_result = json.loads(first_response.text)
+        service_now_request = first_result["result"][0]["it_application_owner"]["link"]
 
-    second_response = requests.get(service_now_request, auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
-    second_result = json.loads(second_response.text)
-    application_owners = second_result["result"]['u_addl_email_addresses']
-    logger.info(f"Application owner contact info is - {application_owners}")
+        second_response = requests.get(service_now_request, auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
+        second_result = json.loads(second_response.text)
+        application_owners = second_result["result"]['u_addl_email_addresses']
+        logger.info(f"Application owner contact info is - {application_owners}")
 
 
 def delete_acl(acl):
