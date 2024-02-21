@@ -411,9 +411,7 @@ def get_application_owner(filename):
     ## service now logic
     first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + str(ba_id), auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
 
-    if first_response.text == "{\"result\":[]}":
-        logger.error(f"The ba.id {ba_id} does not exist in service now")
-    else:
+    if first_response.text != "{\"result\":[]}":
         logger.info(f"The ba.id is {ba_id} ")
 
         first_result = json.loads(first_response.text)
@@ -423,6 +421,33 @@ def get_application_owner(filename):
         second_result = json.loads(second_response.text)
         application_owners = second_result["result"]['u_addl_email_addresses']
         logger.info(f"Application owner contact info is - {application_owners}")
+
+        gh = Github(GITHUB_TOKEN)
+        repo = gh.get_repo("NiyiOdumosu/kafka-application-owner")
+        all_files = []
+        contents = repo.get_contents()
+        while contents:
+            file_content = contents.pop(0)
+            if file_content.type == "dir":
+                contents.extend(repo.get_contents(file_content.path))
+            else:
+                file = file_content
+                all_files.append(str(file).replace('ContentFile(path="','').replace('")',''))
+
+        with open('application_owners.csv', 'a') as file:
+            file.writelines(f"{ba_id}, {application_owners}\n")
+            content = file.read()
+        git_file = 'application_owners.csv'
+        if git_file in all_files:
+            contents = repo.get_contents(git_file)
+            repo.update_file(contents.path, "Added new application owner", content, contents.sha,  branch="main")
+            logger.info(f'Updated application owner to {git_file}')
+        else:
+            repo.create_file(git_file, "committing files", content, branch="master")
+            logger.info(f'Created {git_file}')
+
+    else:
+        logger.error(f"The ba.id {ba_id} does not exist in service now")
 
 
 def delete_acl(acl):
