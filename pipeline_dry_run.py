@@ -242,16 +242,16 @@ def update_existing_topic(topic_name, topic_config):
     Finally, it alters the topic configurations using a POST request to the Kafka REST API.
     """
     rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
-    try:
-        response = requests.get(rest_topic_url + topic_name)
-    except Exception as e:
-        logger.error(e)
+    response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+    if response.status_code != 200:
+        logger.error(f"The topic {topic_name} failed to be updated due to {response.status_code} - {response.text}")
+        exit(1)
 
     current_topic_definition = response.json()
     # Check if the requested update is a config change
     try:
         if'name' in topic_config[0].keys():
-            update_topic_configs(rest_topic_url, topic_config, topic_name)
+            update_topic_configs(topic_config, topic_name)
         elif ('partitions_count' in topic_config[0].keys()) and ('name' in topic_config[1].keys()):
             update_partition_count(current_topic_definition, topic_config[0]['partitions_count'], topic_name)
             topic_config.pop(0)
@@ -259,7 +259,7 @@ def update_existing_topic(topic_name, topic_config):
     except IndexError:
         logger.info(f"Partition count for {topic_name} needs to be updated")
     if 'partitions_count' in topic_config[0].keys() and len(topic_config[0].keys()) == 1:
-        update_partition_count(current_topic_definition, rest_topic_url, topic_config[0]['partitions_count'], topic_name)
+        update_partition_count(current_topic_definition, topic_config[0]['partitions_count'], topic_name)
 
 
 def update_topic_configs(topic_config, topic_name):
@@ -282,7 +282,6 @@ def update_partition_count(current_topic_definition, partition_count, topic_name
 
     Parameters:
     - current_topic_definition (dict): Dictionary representing the current configuration of the Kafka topic.
-    - rest_topic_url (str): The REST API URL for the Kafka topic.
     - partition_count (str): Partition count.
     - topic_name (str): The name of the Kafka topic.
 

@@ -3,7 +3,7 @@
         "topic_a_pvs": {
             "topic_name": "topic_a_pvs",
             "partitions_count": "5",
-            "replication_factor": "1",
+            "replication_factor": 1,
             "configs": [
                 {
                     "name": "cleanup.policy",
@@ -15,7 +15,32 @@
                 },
                 {
                     "name": "retention.ms",
-                    "value": 86400000
+                    "value": 86400001
+                },
+                {
+                    "name": "max.message.bytes",
+                    "value": 1048588
+                }
+            ]
+        }
+    },
+    {
+        "topic_b_pvs": {
+            "topic_name": "topic_b_pvs",
+            "partitions_count": "5",
+            "replication_factor": 1,
+            "configs": [
+                {
+                    "name": "cleanup.policy",
+                    "value": "compact"
+                },
+                {
+                    "name": "compression.type",
+                    "value": "producer"
+                },
+                {
+                    "name": "retention.ms",
+                    "value": -1
                 },
                 {
                     "name": "max.message.bytes",

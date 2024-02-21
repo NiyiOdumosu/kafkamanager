@@ -7,11 +7,11 @@
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "compact"
+                    "value": "delete"
                 },
                 {
                     "name": "compression.type",
-                    "value": "producer"
+                    "value": "zstd"
                 },
                 {
                     "name": "retention.ms",
@@ -19,7 +19,7 @@
                 },
                 {
                     "name": "max.message.bytes",
-                    "value": 1048588
+                    "value": 2242940
                 }
             ]
         }
@@ -27,16 +27,16 @@
     {
         "topic_b_int": {
             "topic_name": "topic_b_int",
-            "partitions_count": "5",
+            "partitions_count": "6",
             "replication_factor": 1,
             "configs": [
                 {
                     "name": "cleanup.policy",
-                    "value": "compact"
+                    "value": "delete"
                 },
                 {
                     "name": "compression.type",
-                    "value": "producer"
+                    "value": "snappy"
                 },
                 {
                     "name": "retention.ms",
