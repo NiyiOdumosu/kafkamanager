@@ -11,13 +11,24 @@
         }
     },
     {
-        "User:clientrestproxy-topic_b_dev-WRITE": {
+        "User:clientrestproxy-topic_a_dev-READ": {
             "resource_type": "TOPIC",
-            "resource_name": "topic_b_dev",
+            "resource_name": "topic_a_dev",
             "pattern_type": "LITERAL",
             "principal": "User:clientrestproxy",
             "host": "*",
-            "operation": "WRITE",
+            "operation": "READ",
+            "permission": "ALLOW"
+        }
+    },
+    {
+        "User:clientrestproxy-topic_a_dev-CREATE": {
+            "resource_type": "TOPIC",
+            "resource_name": "topic_a_dev",
+            "pattern_type": "LITERAL",
+            "principal": "User:clientrestproxy",
+            "host": "*",
+            "operation": "CREATE",
             "permission": "ALLOW"
         }
     }
