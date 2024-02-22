@@ -50,9 +50,9 @@
         }
     },
     {
-        "topic_a3_dev": {
-            "topic_name": "topic_a3_dev",
-            "partitions_count": "7",
+        "topic_b2_dev": {
+            "topic_name": "topic_b2_dev",
+            "partitions_count": "4",
             "replication_factor": 1,
             "configs": [
                 {
@@ -69,7 +69,7 @@
                 },
                 {
                     "name": "max.message.bytes",
-                    "value": 5242941
+                    "value": 1048588
                 }
             ]
         }
