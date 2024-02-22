@@ -437,7 +437,6 @@ def add_new_acl(acl):
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
     user_principal = acl['principal'].split(':')[-1]
-    password = generate_random_password()
     p1 = subprocess.Popen([KAFKA_CONFIGS, '--bootstrap-server', BOOTSTRAP_URL, '--describe', '--entity-type', 'users', '--command-config', CLIENT_PROPERTIES], stdout=PIPE)
     p2 = subprocess.Popen(['grep', user_principal], stdin=p1.stdout, stdout=subprocess.PIPE)
     p1.stdout.close()
@@ -449,7 +448,6 @@ def add_new_acl(acl):
         # Adding new scram user principal with password
         subprocess.Popen([KAFKA_CONFIGS, '--bootstrap-server', BOOTSTRAP_URL, '--alter', '--add-config', f'SCRAM-SHA-256=[password=${password}],SCRAM-SHA-512=[password=${password}]', '--entity-type', 'users', '--entity-name', user_principal, '--command-config', CLIENT_PROPERTIES], stdout=PIPE, stderr=PIPE)
         logger.info(f"The user principal {user_principal} is {password}")
-        # Adding new scram user principal with password
         logger.info(f"Password for {user_principal} is {password}")
     acl_json = json.dumps(acl)
 
