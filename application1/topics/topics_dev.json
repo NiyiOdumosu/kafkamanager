@@ -50,7 +50,6 @@
         }
     },
     {
-
         "topic_a_dev": {
             "topic_name": "topic_a_dev",
             "partitions_count": "5",
