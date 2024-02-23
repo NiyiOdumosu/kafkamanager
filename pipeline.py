@@ -2,7 +2,7 @@ from github import Github
 from deepdiff import DeepDiff
 from datetime import datetime
 from subprocess import PIPE
-
+from botocore.exceptions import ClientError
 
 import json
 import logging
@@ -12,6 +12,7 @@ import requests
 import string
 import secrets
 import subprocess
+import boto3
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
@@ -27,6 +28,9 @@ ENV = os.getenv('ENV')
 CLIENT_PROPERTIES = os.getenv('CLIENT_PROPERTIES')
 BOOTSTRAP_URL = os.getenv('BOOTSTRAP_URL')
 KAFKA_CONFIGS = os.getenv('KAFKA_CONFIGS')
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_SESSION_TOKEN = os.getenv('AWS_SESSION_TOKEN')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -655,6 +659,63 @@ def main():
     previous_acls = 'application1/acls/previous-acls.json'
 
     deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, ENV)
+
+
+# Use this code snippet in your app.
+# If you need more information about configurations
+# or implementing the sample code, visit the AWS docs:
+# https://aws.amazon.com/developer/language/python/
+def add_secret_to_aws():
+    secret_name = "niyi/test"
+    region_name = "us-east-1"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session(aws_access_key_id=AWS_ACCESS_KEY_ID,
+                                    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                                    aws_session_token=AWS_SESSION_TOKEN)
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    secret = get_secret_value_response['SecretString']
+
+    # Parse the existing secret string to a Python dictionary
+    try:
+        secret_dict = json.loads(secret)
+    except json.JSONDecodeError as e:
+        # Handle JSON decoding error
+        print(f"Error decoding JSON: {e}")
+        return
+
+    # Your code goes here.
+    print(f"The pre-existing secret for {secret_name} is {secret}")
+
+    password = generate_random_password()
+    # Add the new key/value pair to the existing dictionary in the aws secret
+    secret_dict['user'] = password
+    # Convert the dictionary back to a JSON string
+    new_secret = json.dumps(secret_dict)
+
+    try:
+        client.put_secret_value(
+            SecretId='niyi/test',
+            SecretString=new_secret,
+        )
+        print(f"The newly added secret for 'niyi/test' is: {new_secret}")
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
 
 
 if __name__ == '__main__':
