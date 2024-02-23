@@ -459,7 +459,7 @@ def get_application_owner(filename):
             logger.info(f'Created {git_file}')
 
     else:
-        logger.error(f"The ba.id {ba_id} does not exist in service now")
+        logger.error(f"The ba.id added does not exist in ServiceNow")
 
 
 def delete_acl(acl):
