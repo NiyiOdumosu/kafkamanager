@@ -1,0 +1,35 @@
+[
+    {
+        "User:clientrestproxy-topic_a2_dev-WRITE": {
+            "resource_type": "TOPIC",
+            "resource_name": "topic_a2_dev",
+            "pattern_type": "LITERAL",
+            "principal": "User:clientrestproxy",
+            "host": "*",
+            "operation": "WRITE",
+            "permission": "ALLOW"
+        }
+    },
+    {
+        "User:clientrestproxy-topic_a2_dev-READ": {
+            "resource_type": "TOPIC",
+            "resource_name": "topic_a2_dev",
+            "pattern_type": "LITERAL",
+            "principal": "User:clientrestproxy",
+            "host": "*",
+            "operation": "READ",
+            "permission": "ALLOW"
+        }
+    },
+    {
+        "User:clientrestproxy-topic_a2_dev-CREATE": {
+            "resource_type": "TOPIC",
+            "resource_name": "topic_a2_dev",
+            "pattern_type": "LITERAL",
+            "principal": "User:clientrestproxy",
+            "host": "*",
+            "operation": "CREATE",
+            "permission": "ALLOW"
+        }
+    }
+]
