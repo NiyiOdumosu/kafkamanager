@@ -1,5 +1,8 @@
+import subprocess
+
 from github import Github
 from deepdiff import DeepDiff
+from subprocess import PIPE
 
 import click
 import json
@@ -9,6 +12,7 @@ import pandas as pd
 import requests
 import re
 import string
+
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
@@ -21,7 +25,6 @@ REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
 REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
 ENV = os.getenv('env')
 CIGNA_SERVICE_NOW_REST_URL = os.getenv('CIGNA_SERVICE_NOW_REST_URL')
-CIGNA_SERVICE_NOW_APP_OWNER_URL = os.getenv('CIGNA_SERVICE_NOW_APP_OWNER_URL')
 SERVICE_NOW_USERNAME = os.getenv('SERVICE_NOW_USERNAME')
 SERVICE_NOW_PASSWORD = os.getenv('SERVICE_NOW_PASSWORD')
 
@@ -69,11 +72,20 @@ def get_content_from_branches(repo, filename, head_branch, base_branch):
         base_file_content = repo.get_contents(filename, ref=base_branch)
         head_file_content_json = json.loads(base_file_content.decoded_content)
         base_file_content_json = json.loads(head_file_content.decoded_content)
-
-        return head_file_content_json, base_file_content_json
     except Exception as e:
-        logger.error(f"Error getting latest commit diff: {e}")
-        raise
+        logger.error(f"File {filename} is being added for the first time.")
+        current_resources = 'current-resources.json'
+        previous_resources = 'previous-resources.json'
+        current_resources_command = f"git show HEAD:{filename} > {current_resources}"
+        previous_resources_command = f"git show HEAD~1:{filename} > {previous_resources}"
+
+        subprocess.run(current_resources_command, stdout=PIPE, stderr=PIPE, shell=True)
+        subprocess.run(previous_resources_command, stdout=PIPE, stderr=PIPE, shell=True)
+
+        head_file_content_json = json.loads('{}')
+        base_file_content_json = json.loads(head_file_content.decoded_content)
+
+    return head_file_content_json, base_file_content_json
 
 
 def find_changed_topics(source_topics, new_topics):
@@ -425,7 +437,7 @@ def get_application_owner(filename):
         gh = Github(GITHUB_TOKEN)
         repo = gh.get_repo("NiyiOdumosu/kafka-application-owner")
         all_files = []
-        contents = repo.get_contents()
+        contents = repo.get_contents("")
         while contents:
             file_content = contents.pop(0)
             if file_content.type == "dir":
