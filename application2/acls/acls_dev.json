@@ -1,8 +1,8 @@
 [
     {
-        "User:clientrestproxy-topic_a_dev-WRITE": {
+        "User:clientrestproxy-topic_a2_dev-WRITE": {
             "resource_type": "TOPIC",
-            "resource_name": "topic_a_dev",
+            "resource_name": "topic_a2_dev",
             "pattern_type": "LITERAL",
             "principal": "User:clientrestproxy",
             "host": "*",
@@ -11,9 +11,9 @@
         }
     },
     {
-        "User:clientrestproxy-topic_a_dev-READ": {
+        "User:clientrestproxy-topic_a2_dev-READ": {
             "resource_type": "TOPIC",
-            "resource_name": "topic_a_dev",
+            "resource_name": "topic_a2_dev",
             "pattern_type": "LITERAL",
             "principal": "User:clientrestproxy",
             "host": "*",
@@ -22,9 +22,9 @@
         }
     },
     {
-        "User:clientrestproxy-topic_a_dev-CREATE": {
+        "User:clientrestproxy-topic_a2_dev-CREATE": {
             "resource_type": "TOPIC",
-            "resource_name": "topic_a_dev",
+            "resource_name": "topic_a2_dev",
             "pattern_type": "LITERAL",
             "principal": "User:clientrestproxy",
             "host": "*",

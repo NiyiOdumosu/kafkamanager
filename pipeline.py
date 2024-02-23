@@ -2,7 +2,6 @@ from github import Github
 from deepdiff import DeepDiff
 from datetime import datetime
 from subprocess import PIPE
-from jsonschema import validate
 
 
 import json
@@ -11,6 +10,7 @@ import os
 import re
 import requests
 import string
+import secrets
 import subprocess
 
 # Constant variables
@@ -23,7 +23,10 @@ REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
 REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
 CONNECT_BASIC_AUTH_USER = os.getenv('CONNECT_BASIC_AUTH_USER')
 CONNECT_BASIC_AUTH_PASS = os.getenv('CONNECT_BASIC_AUTH_PASS')
-ENV = os.getenv('env')
+ENV = os.getenv('ENV')
+CLIENT_PROPERTIES = os.getenv('CLIENT_PROPERTIES')
+BOOTSTRAP_URL = os.getenv('BOOTSTRAP_URL')
+KAFKA_CONFIGS = os.getenv('KAFKA_CONFIGS')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -417,6 +420,12 @@ def build_acl_rest_url(base_url, cluster_id):
     return f'{base_url}/v3/clusters/{cluster_id}/acls/'
 
 
+def generate_random_password():
+    alphabet = string.ascii_letters + string.digits
+    password = ''.join(secrets.choice(alphabet) for i in range(8))
+    return password
+
+
 def add_new_acl(acl):
     """
     Add a new Kafka acl using the provided ACL configuration.
@@ -426,7 +435,21 @@ def add_new_acl(acl):
 
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
+    user_principal = acl['principal'].split(':')[-1]
+    p1 = subprocess.Popen([KAFKA_CONFIGS, '--bootstrap-server', BOOTSTRAP_URL, '--describe', '--entity-type', 'users', '--command-config', CLIENT_PROPERTIES], stdout=PIPE)
+    p2 = subprocess.Popen(['grep', user_principal], stdin=p1.stdout, stdout=subprocess.PIPE)
+    p1.stdout.close()
+    user_output = p2.communicate()[0]
+    user_output = user_output.decode('utf-8')
+    if user_principal not in user_output:
+        # Generate pseudo random password for scram user
+        password = generate_random_password()
+        # Adding new scram user principal with password
+        subprocess.Popen([KAFKA_CONFIGS, '--bootstrap-server', BOOTSTRAP_URL, '--alter', '--add-config', f'SCRAM-SHA-256=[password=${password}],SCRAM-SHA-512=[password=${password}]', '--entity-type', 'users', '--entity-name', user_principal, '--command-config', CLIENT_PROPERTIES], stdout=PIPE, stderr=PIPE)
+        logger.info(f"The user principal {user_principal} is {password}")
+        logger.info(f"Password for {user_principal} is {password}")
     acl_json = json.dumps(acl)
+
     response = requests.post(rest_acl_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=acl_json, headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 201:
