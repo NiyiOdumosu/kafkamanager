@@ -2,7 +2,6 @@ from github import Github
 from deepdiff import DeepDiff
 from datetime import datetime
 from subprocess import PIPE
-from jsonschema import validate
 
 
 import json
