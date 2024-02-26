@@ -698,7 +698,9 @@ def deploy_changes(current_acls, current_topics, files_list, previous_acls, prev
             filename = file.split(" ")[1]
             process_connector_changes(filename)
         elif ("connectors" in file) and (f"-{env}" in file) and ('R' in file):
-            filename = file.split(" ")[2]
+            filename = file.split("\t")[0]
+            delete_connector(filename)
+            filename = file.split("\t")[1]
             process_connector_changes(filename)
 
 
@@ -711,7 +713,7 @@ def main():
 
     files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], stdout=PIPE, stderr=PIPE).stdout
     files_string = files.decode('utf-8')
-    pattern = re.compile(r'([AMD])\s+(.+)')
+    pattern = re.compile(r'(R\d{3})\s*(.*)|([AMD])\s+(.+)')
     files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
 
     current_topics = 'application1/topics/current-topics.json'
