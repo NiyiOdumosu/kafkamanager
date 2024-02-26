@@ -430,6 +430,60 @@ def generate_random_password():
     return password
 
 
+def add_secret_to_aws(user_principal, password):
+    secret_name = "niyi/test"
+    region_name = "us-east-1"
+
+    # This needs to be authentication through federation
+    # Will require a role arn
+    session = boto3.session.Session(aws_access_key_id=AWS_ACCESS_KEY_ID,
+                                    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                                    aws_session_token=AWS_SESSION_TOKEN)
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    secret = get_secret_value_response['SecretString']
+
+    # Parse the existing secret string to a Python dictionary
+    try:
+        secret_dict = json.loads(secret)
+    except json.JSONDecodeError as e:
+        # Handle JSON decoding error
+        print(f"Error decoding JSON: {e}")
+        return
+
+    # Your code goes here.
+    print(f"The pre-existing secret for {secret_name} is {secret}")
+
+    # Add the new key/value pair to the existing dictionary in the aws secret
+    secret_dict[user_principal] = password
+    # Convert the dictionary back to a JSON string
+    new_secret = json.dumps(secret_dict)
+
+    try:
+        client.put_secret_value(
+            # change this to the name of your secret
+            SecretId='niyi/test',
+            SecretString=new_secret,
+        )
+        print(f"The newly added secret for 'niyi/test' is: {new_secret}")
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+
 def add_new_acl(acl):
     """
     Add a new Kafka acl using the provided ACL configuration.
@@ -450,8 +504,8 @@ def add_new_acl(acl):
         password = generate_random_password()
         # Adding new scram user principal with password
         subprocess.Popen([KAFKA_CONFIGS, '--bootstrap-server', BOOTSTRAP_URL, '--alter', '--add-config', f'SCRAM-SHA-256=[password=${password}],SCRAM-SHA-512=[password=${password}]', '--entity-type', 'users', '--entity-name', user_principal, '--command-config', CLIENT_PROPERTIES], stdout=PIPE, stderr=PIPE)
-        logger.info(f"The user principal {user_principal} is {password}")
-        logger.info(f"Password for {user_principal} is {password}")
+        logger.info(f"The user principal is {user_principal} and SCRAM password is {password}")
+        # add_secret_to_aws(user_principal, password)
     acl_json = json.dumps(acl)
 
     response = requests.post(rest_acl_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=acl_json, headers=HEADERS)
@@ -638,7 +692,7 @@ def deploy_changes(current_acls, current_topics, files_list, previous_acls, prev
         elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
-        elif ("connectors" in file) and (f"-{env}" in file) and ('R ' in file):
+        elif ("connectors" in file) and (f"-{env}" in file) and ('R' in file):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
 
@@ -662,63 +716,6 @@ def main():
     previous_acls = 'application1/acls/previous-acls.json'
 
     deploy_changes(current_acls, current_topics, files_list, previous_acls, previous_topics, ENV)
-
-
-# Use this code snippet in your app.
-# If you need more information about configurations
-# or implementing the sample code, visit the AWS docs:
-# https://aws.amazon.com/developer/language/python/
-def add_secret_to_aws():
-    secret_name = "niyi/test"
-    region_name = "us-east-1"
-
-    # Create a Secrets Manager client
-    session = boto3.session.Session(aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-                                    aws_session_token=AWS_SESSION_TOKEN)
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-
-    try:
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
-        )
-    except ClientError as e:
-        # For a list of exceptions thrown, see
-        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-        raise e
-
-    secret = get_secret_value_response['SecretString']
-
-    # Parse the existing secret string to a Python dictionary
-    try:
-        secret_dict = json.loads(secret)
-    except json.JSONDecodeError as e:
-        # Handle JSON decoding error
-        print(f"Error decoding JSON: {e}")
-        return
-
-    # Your code goes here.
-    print(f"The pre-existing secret for {secret_name} is {secret}")
-
-    password = generate_random_password()
-    # Add the new key/value pair to the existing dictionary in the aws secret
-    secret_dict['user'] = password
-    # Convert the dictionary back to a JSON string
-    new_secret = json.dumps(secret_dict)
-
-    try:
-        client.put_secret_value(
-            SecretId='niyi/test',
-            SecretString=new_secret,
-        )
-        print(f"The newly added secret for 'niyi/test' is: {new_secret}")
-    except ClientError as e:
-        # For a list of exceptions thrown, see
-        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-        raise e
 
 
 if __name__ == '__main__':

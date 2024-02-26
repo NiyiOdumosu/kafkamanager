@@ -467,7 +467,7 @@ def get_application_owner(filename):
             repo.update_file(contents.path, "Added new application owner", content, contents.sha,  branch="main")
             logger.info(f'Updated application owner to {git_file}')
         else:
-            repo.create_file(git_file, "committing files", content, branch="main")
+            repo.create_file(git_file, "committing files", content,  branch="main")
             logger.info(f'Created {git_file}')
 
     else:
