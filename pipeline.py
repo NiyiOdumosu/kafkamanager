@@ -587,6 +587,11 @@ def process_connector_changes(connector_file):
     except KeyError:
         logger.info("The topic field name for this connector is not topics or topic.whitelist")
 
+    try:
+        topics = connector_configs['kafka.topic']
+    except KeyError:
+        logger.info("The topic field name for this connector is not topics or kafka.topic")
+
     if ',' in topics:
         topic_list = topics.split(',')
         for topic in topic_list:
