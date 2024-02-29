@@ -234,6 +234,15 @@ def add_new_topic(topic):
         logger.error(f"Partition count can not be higher than 32")
         exit(1)
 
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
+
+    get_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+    if get_response.status_code != 200:
+        logger.info(f"Topic does not already exist. Please proceed with creating the topic")
+    else:
+        logger.error(f"Topic already exist. Will not create a the topic {topic_name}")
+        exit(1)
+
     logger.info(f"The topic {topic['topic_name']} will be created once the PR is merged")
 
 
@@ -458,7 +467,7 @@ def get_application_owner(filename):
             repo.update_file(contents.path, "Added new application owner", content, contents.sha,  branch="main")
             logger.info(f'Updated application owner to {git_file}')
         else:
-            repo.create_file(git_file, "committing files", content, branch="main")
+            repo.create_file(git_file, "committing files", content,  branch="main")
             logger.info(f'Created {git_file}')
 
     else:
