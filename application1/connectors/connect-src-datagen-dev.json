@@ -3,7 +3,7 @@
   "kafka.topic" : "topic_a_dev",
   "value.converter": "org.apache.kafka.connect.json.JsonConverter",
   "output.data.format" : "JSON",
-  "quickstart" : "CLICKSTREAM",
-  "tasks.max" : "2",
+  "quickstart" : "ORDERS",
+  "tasks.max" : "7",
   "user":"admin"
 }

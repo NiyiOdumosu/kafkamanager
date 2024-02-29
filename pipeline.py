@@ -714,8 +714,8 @@ def main():
     files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], stdout=PIPE, stderr=PIPE).stdout
     files_string = files.decode('utf-8')
     pattern = re.compile(r'(R\d{3})\s*(.*)|([AMD])\s+(.+)')
-    files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
-
+    # files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
+    files_list = [(match.group(1) or '') + ' ' + (match.group(2) or '') for match in pattern.finditer(files_string)]
     current_topics = 'application1/topics/current-topics.json'
     previous_topics = 'application1/topics/previous-topics.json'
 
