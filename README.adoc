@@ -1,0 +1,200 @@
+# KafkaManager
+
+KafkaManager is a tool for managing Apache Kafka topics, access control lists (ACLs), and connectors. It leverages the Kafka REST API to perform actions such as creating and updating topics, managing ACLs, and configuring connectors.
+
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [Acknowledgments](#acknowledgments)
+
+## Features
+
+- **Topic Management:** Create, update, and delete Kafka topics.
+- **ACL Management:** Add or remove access control lists for topics.
+- **Connector Configuration:** Manage Kafka connectors by adding or removing them.
+- **Automated Resource Management:** Automatically apply changes based on git diffs.
+- **Application Owner Retrieval:** Uses the BA.Id to get application owner contacts
+- **SCRAM SHA User Creation:** Creates user principal and password for new users needed for ACLs
+- **ChangeLog:** Creates a change log that captures the changes made to the Confluent resources using the REST Proxy
+
+
+
+
+### Prerequisites
+
+The following prerequisites are needed if you want to not just manage an ACL, Topic or, Connector, but if you also desire to do local development in this repo.
+
+- [Python 3.x](https://www.python.org/downloads/)
+- [Pip](https://pypi.org/project/pip/)
+- [Git](https://git-scm.com/downloads)
+- Kafka Cluster with REST Proxy and Connect configurations
+- Access to Kafka REST API with appropriate credentials
+- Access to Connect REST API with appropriate credentials
+- [Java 11 or higher](https://www.oracle.com/java/technologies/downloads/)
+- [Apache Kafka Binary](https://kafka.apache.org/downloads)
+
+
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/your-username/kafkamanager.git
+cd kafkamanager
+```
+
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Configuration
+
+1. Set the necessary environment variables:
+
+```bash
+export GITHUB_TOKEN=your_github_token
+export REST_URL=your_kafka_rest_proxy_url
+export KAFKA_CLUSTER_ID=your_kafka_cluster_id
+export CONNECT_REST_URL=your_kafka_connect_rest_url
+export REST_BASIC_AUTH_USER=your_kafka_rest_basic_auth_user
+export REST_BASIC_AUTH_PASS=your_kafka_rest_basic_auth_pass
+export CONNECT_BASIC_AUTH_USER=your_kafka_connect_basic_auth_user
+export CONNECT_BASIC_AUTH_PASS=your_kafka_connect_basic_auth_pass
+ENV = os.getenv('ENV')
+CLIENT_PROPERTIES = os.getenv('CLIENT_PROPERTIES')
+BOOTSTRAP_URL = os.getenv('BOOTSTRAP_URL')
+KAFKA_CONFIGS = os.getenv('KAFKA_CONFIGS')
+```
+
+2. Ensure your Kafka topics, ACLs, and connectors are defined in JSON files within the appropriate `application` directory.
+
+The application directory should be named after your application. This application should have a 1-2-1 relaitonship with your ba.id.
+
+## Usage
+
+
+### Managing a Topic
+
+To create a new topic, add the topic config values to a topic_configs_{env}.csv. There are seven configurations that need a valid value. The only required field is a topic name. There are default values for the other configurations except ba.id.
+
+Topic Configs:
+
+- topic_name - required
+- patitions_count - default is 4
+- retention.ms - default is 86400000
+- compression.type - default is producer
+- cleanup.policy - default is delete
+- max.message.bytes - default is 1048588
+
+The ba.id is optional but this is input is preferred. With the ba.id, the pipeline dry run file can get the application owner from service now.
+
+Adding a new topic row to the config will create a topic. Removing an existing topic row will delete the topic. Making changes to an existing topic row that  has been merged and deployed, will update a topic.
+
+Once you make the necessary changes to the topic configs file, please run the `generate_topics.py` script. This will generate a json file which will be used by Confluent's rest proxy to create a new topic. You will also have to specify the path of the application's topics folder and set the environment you are targeting. The acceptable environments are as follows:
+
+- dev
+- int
+- pvs
+- prd
+
+```bash
+python generate_topics.py application1/topics dev
+```
+
+Please note that if you make changes to the topic configs but do not run the generate topics script before pushing your code, no changes will occur. This script has to be run to deploy any changes to the topic.
+
+
+### Managing an ACL
+
+To create a new acl, add the acl config values to a acl_configs_{env}.csv. There are eight configurations that need a valid value. All fields are required because no field takes a default value.
+
+ACL Configs:
+
+- principal - required
+- resource_type - required
+- resource_name - required
+- pattern_type - drequired
+- host - required
+- operation - required
+- permission - required
+
+You can learn more about [Confluent ACLs](https://docs.confluent.io/platform/current/kafka/authorization.html) by visiting the Confluent site.
+
+Adding a new acl row to the config will create a acl. Removing an existing acl row will delete the acl. One cannot update an existing ACL. You can only create and delete an ACL.
+
+Once you make the necessary changes to the topic configs file, please run the `generate_acls.py` script. This will generate a json file which will be used by Confluent's rest proxy to create a new topic. You will also have to specify the path of the application's topics folder and set the environment you are targeting. The acceptable environments are as follows:
+
+- dev
+- int
+- pvs
+- prd
+
+```bash
+python generate_topics.py application1/acls dev
+```
+
+Please note that if you make changes to the topic configs but do not run the `generate_acls.py` script before pushing your code, no changes will occur. This script has to be run to deploy any changes for the ACL.
+
+### Managing a Connector
+
+To create a new connector, add the json configuration of that connector in the connectors/ folder. The name of the connector must be the name of the json file. The pipeline logic takes that file name and uses it as the connector name. Also please make sure that you are using valid json before pushing the commited code to your branch.
+
+The additiona of a new file will create a new connector.
+The removal of an existing file will delete that connector from the Connect cluster.
+The renaming of an existing connector will delete the connector with the previous name and create a new connector with the changed name.
+
+Please note that the connector logic does not have a generate python script. This is because the connector is already in a json format.
+
+### Pipeline DryRun
+
+To execuite the `pipeline_dry_run.py` script locally, run the below command
+
+```bash
+ python pipeline_dry_run.py PR-ID
+````
+The PR-ID is the pull request number associated to the [Github pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request). This will merge the code from the head branch (feature) into the base branch (environment).
+
+Once you execute the dry run pipeline, you will see log statements showing the expected behavior of the code.
+
+
+### Pipeline
+Execute the `pipeline.py` script to apply changes based on the most recently pushed to the current branch.
+Please keep in mind that this compares code in the commits you just pushed verses the code that was in the previous push.
+
+```bash
+python pipeline.py
+```
+This will apply the necessary changes in your most recent commits as long as you have valid values for the enviornment variables above.
+
+
+Once you execute the pipeline, you will see log statements showing the applied changes of the code.
+
+
+### Contributing
+
+Once you make your changes to the topic, acl or connector files. Please add them and commit them as follows:
+
+```bash
+git commit -a -m "Insert Commit Message here"
+```
+
+Then push your changes to the branch
+
+```bash
+git push origin <branch-name>
+```
+
+Once this is pushed to the branch. Create a pull request on Github. This will automatically kickoff a Jenkins build job that will execute the pipeline dry run script.
+
+
+### Acknowledgments
+
+A big shout out to the Jaya, Venu and RK for their thought leadership and contributions to this repository.
