@@ -2,8 +2,7 @@ from github import Github
 from deepdiff import DeepDiff
 from datetime import datetime
 from subprocess import PIPE
-from jsonschema import validate
-
+from botocore.exceptions import ClientError
 
 import json
 import logging
@@ -11,7 +10,9 @@ import os
 import re
 import requests
 import string
+import secrets
 import subprocess
+import boto3
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
@@ -23,7 +24,13 @@ REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
 REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
 CONNECT_BASIC_AUTH_USER = os.getenv('CONNECT_BASIC_AUTH_USER')
 CONNECT_BASIC_AUTH_PASS = os.getenv('CONNECT_BASIC_AUTH_PASS')
-ENV = os.getenv('env')
+ENV = os.getenv('ENV')
+CLIENT_PROPERTIES = os.getenv('CLIENT_PROPERTIES')
+BOOTSTRAP_URL = os.getenv('BOOTSTRAP_URL')
+KAFKA_CONFIGS = os.getenv('KAFKA_CONFIGS')
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_SESSION_TOKEN = os.getenv('AWS_SESSION_TOKEN')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -417,6 +424,66 @@ def build_acl_rest_url(base_url, cluster_id):
     return f'{base_url}/v3/clusters/{cluster_id}/acls/'
 
 
+def generate_random_password():
+    alphabet = string.ascii_letters + string.digits
+    password = ''.join(secrets.choice(alphabet) for i in range(8))
+    return password
+
+
+def add_secret_to_aws(user_principal, password):
+    secret_name = "niyi/test"
+    region_name = "us-east-1"
+
+    # This needs to be authentication through federation
+    # Will require a role arn
+    session = boto3.session.Session(aws_access_key_id=AWS_ACCESS_KEY_ID,
+                                    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                                    aws_session_token=AWS_SESSION_TOKEN)
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    secret = get_secret_value_response['SecretString']
+
+    # Parse the existing secret string to a Python dictionary
+    try:
+        secret_dict = json.loads(secret)
+    except json.JSONDecodeError as e:
+        # Handle JSON decoding error
+        print(f"Error decoding JSON: {e}")
+        return
+
+    # Your code goes here.
+    print(f"The pre-existing secret for {secret_name} is {secret}")
+
+    # Add the new key/value pair to the existing dictionary in the aws secret
+    secret_dict[user_principal] = password
+    # Convert the dictionary back to a JSON string
+    new_secret = json.dumps(secret_dict)
+
+    try:
+        client.put_secret_value(
+            # change this to the name of your secret
+            SecretId='niyi/test',
+            SecretString=new_secret,
+        )
+        print(f"The newly added secret for 'niyi/test' is: {new_secret}")
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+
 def add_new_acl(acl):
     """
     Add a new Kafka acl using the provided ACL configuration.
@@ -426,7 +493,21 @@ def add_new_acl(acl):
 
     """
     rest_acl_url = build_acl_rest_url(REST_PROXY_URL, CLUSTER_ID)
+    user_principal = acl['principal'].split(':')[-1]
+    p1 = subprocess.Popen([KAFKA_CONFIGS, '--bootstrap-server', BOOTSTRAP_URL, '--describe', '--entity-type', 'users', '--command-config', CLIENT_PROPERTIES], stdout=PIPE)
+    p2 = subprocess.Popen(['grep', user_principal], stdin=p1.stdout, stdout=subprocess.PIPE)
+    p1.stdout.close()
+    user_output = p2.communicate()[0]
+    user_output = user_output.decode('utf-8')
+    if user_principal not in user_output:
+        # Generate pseudo random password for scram user
+        password = generate_random_password()
+        # Adding new scram user principal with password
+        subprocess.Popen([KAFKA_CONFIGS, '--bootstrap-server', BOOTSTRAP_URL, '--alter', '--add-config', f'SCRAM-SHA-256=[password=${password}],SCRAM-SHA-512=[password=${password}]', '--entity-type', 'users', '--entity-name', user_principal, '--command-config', CLIENT_PROPERTIES], stdout=PIPE, stderr=PIPE)
+        logger.info(f"The user principal is {user_principal} and SCRAM password is {password}")
+        # add_secret_to_aws(user_principal, password)
     acl_json = json.dumps(acl)
+
     response = requests.post(rest_acl_url, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS), data=acl_json, headers=HEADERS)
     with open('CHANGELOG.md', 'a') as f:
         if response.status_code == 201:
@@ -505,6 +586,11 @@ def process_connector_changes(connector_file):
         topics = connector_configs['topic.whitelist']
     except KeyError:
         logger.info("The topic field name for this connector is not topics or topic.whitelist")
+
+    try:
+        topics = connector_configs['kafka.topic']
+    except KeyError:
+        logger.info("The topic field name for this connector is not topics or kafka.topic")
 
     if ',' in topics:
         topic_list = topics.split(',')
@@ -611,6 +697,11 @@ def deploy_changes(current_acls, current_topics, files_list, previous_acls, prev
         elif (("connectors" in file) and (f"-{env}" in file) and ('M ' in file)) or (("connectors" in file) and (f"-{env}" in file) and ('A ' in file)):
             filename = file.split(" ")[1]
             process_connector_changes(filename)
+        elif ("connectors" in file) and (f"-{env}" in file) and ('R' in file):
+            filename = file.split("\t")[0]
+            delete_connector(filename)
+            filename = file.split("\t")[1]
+            process_connector_changes(filename)
 
 
 def main():
@@ -622,9 +713,15 @@ def main():
 
     files = subprocess.run(['git', 'diff', '--name-status', previous_commit, latest_commit], stdout=PIPE, stderr=PIPE).stdout
     files_string = files.decode('utf-8')
-    pattern = re.compile(r'([AMD])\s+(.+)')
-    files_list = [match.group(1) + ' ' + match.group(2) for match in pattern.finditer(files_string)]
+    files_list = []
+    pattern = re.compile(r'([AMD])\s+(.+)|(R\d{3})\s*(.*)')
+    for match in pattern.finditer(files_string):
+        if match.group(1):  # Check if the first pattern matched
+            files_list.append(match.group(1) + ' ' + match.group(2))
+        else:  # The second pattern matched
+            files_list.append(match.group(3) + ' ' + match.group(4))
 
+    # files_list = [(match.group(1) or '') + ' ' + (match.group(2) or '') for match in pattern.finditer(files_string)]
     current_topics = 'application1/topics/current-topics.json'
     previous_topics = 'application1/topics/previous-topics.json'
 

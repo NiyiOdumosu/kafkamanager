@@ -1,9 +1,9 @@
 {
   "connector.class": "io.confluent.kafka.connect.datagen.DatagenConnector",
-  "kafka.topic" : "topic_b_dev",
+  "kafka.topic" : "topic_c_dev",
   "value.converter": "org.apache.kafka.connect.json.JsonConverter",
   "output.data.format" : "JSON",
-  "quickstart" : "USERS",
+  "quickstart" : "ORDERS",
   "tasks.max" : "1",
-  "user":"niyi"
+  "user":"admin"
 }

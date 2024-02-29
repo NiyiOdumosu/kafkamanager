@@ -48,30 +48,5 @@
                 }
             ]
         }
-    },
-    {
-        "topic_a3_dev": {
-            "topic_name": "topic_a3_dev",
-            "partitions_count": "7",
-            "replication_factor": 1,
-            "configs": [
-                {
-                    "name": "cleanup.policy",
-                    "value": "compact"
-                },
-                {
-                    "name": "compression.type",
-                    "value": "producer"
-                },
-                {
-                    "name": "retention.ms",
-                    "value": 86400000
-                },
-                {
-                    "name": "max.message.bytes",
-                    "value": 5242941
-                }
-            ]
-        }
     }
 ]

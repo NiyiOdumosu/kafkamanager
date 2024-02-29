@@ -10,3 +10,7 @@ application1/acls/current-acls.json
 application1/topics/previous-topics.json
 application1/topics/current-topics.json
 CHANGELOG.md
+current-resources.json
+previous-resources.json
+application_owners.csv
+

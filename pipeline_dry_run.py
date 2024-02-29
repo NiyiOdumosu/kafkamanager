@@ -1,5 +1,8 @@
+import subprocess
+
 from github import Github
 from deepdiff import DeepDiff
+from subprocess import PIPE
 
 import click
 import json
@@ -9,6 +12,7 @@ import pandas as pd
 import requests
 import re
 import string
+
 
 # Constant variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
@@ -21,7 +25,6 @@ REST_BASIC_AUTH_USER = os.getenv('REST_BASIC_AUTH_USER')
 REST_BASIC_AUTH_PASS = os.getenv('REST_BASIC_AUTH_PASS')
 ENV = os.getenv('env')
 CIGNA_SERVICE_NOW_REST_URL = os.getenv('CIGNA_SERVICE_NOW_REST_URL')
-CIGNA_SERVICE_NOW_APP_OWNER_URL = os.getenv('CIGNA_SERVICE_NOW_APP_OWNER_URL')
 SERVICE_NOW_USERNAME = os.getenv('SERVICE_NOW_USERNAME')
 SERVICE_NOW_PASSWORD = os.getenv('SERVICE_NOW_PASSWORD')
 
@@ -69,11 +72,20 @@ def get_content_from_branches(repo, filename, head_branch, base_branch):
         base_file_content = repo.get_contents(filename, ref=base_branch)
         head_file_content_json = json.loads(base_file_content.decoded_content)
         base_file_content_json = json.loads(head_file_content.decoded_content)
-
-        return head_file_content_json, base_file_content_json
     except Exception as e:
-        logger.error(f"Error getting latest commit diff: {e}")
-        raise
+        logger.error(f"File {filename} is being added for the first time.")
+        current_resources = 'current-resources.json'
+        previous_resources = 'previous-resources.json'
+        current_resources_command = f"git show HEAD:{filename} > {current_resources}"
+        previous_resources_command = f"git show HEAD~1:{filename} > {previous_resources}"
+
+        subprocess.run(current_resources_command, stdout=PIPE, stderr=PIPE, shell=True)
+        subprocess.run(previous_resources_command, stdout=PIPE, stderr=PIPE, shell=True)
+
+        head_file_content_json = json.loads('{}')
+        base_file_content_json = json.loads(head_file_content.decoded_content)
+
+    return head_file_content_json, base_file_content_json
 
 
 def find_changed_topics(source_topics, new_topics):
@@ -220,6 +232,15 @@ def add_new_topic(topic):
 
     if int(topic["partitions_count"]) > 32:
         logger.error(f"Partition count can not be higher than 32")
+        exit(1)
+
+    rest_topic_url = build_topic_rest_url(REST_PROXY_URL, CLUSTER_ID)
+
+    get_response = requests.get(rest_topic_url + topic_name, auth=(REST_BASIC_AUTH_USER, REST_BASIC_AUTH_PASS))
+    if get_response.status_code != 200:
+        logger.info(f"Topic does not already exist. Please proceed with creating the topic")
+    else:
+        logger.error(f"Topic already exist. Will not create a the topic {topic_name}")
         exit(1)
 
     logger.info(f"The topic {topic['topic_name']} will be created once the PR is merged")
@@ -411,9 +432,7 @@ def get_application_owner(filename):
     ## service now logic
     first_response = requests.get(CIGNA_SERVICE_NOW_REST_URL + str(ba_id), auth=(SERVICE_NOW_USERNAME, SERVICE_NOW_PASSWORD))
 
-    if first_response.text == "{\"result\":[]}":
-        logger.error(f"The ba.id {ba_id} does not exist in service now")
-    else:
+    if first_response.text != "{\"result\":[]}":
         logger.info(f"The ba.id is {ba_id} ")
 
         first_result = json.loads(first_response.text)
@@ -423,6 +442,36 @@ def get_application_owner(filename):
         second_result = json.loads(second_response.text)
         application_owners = second_result["result"]['u_addl_email_addresses']
         logger.info(f"Application owner contact info is - {application_owners}")
+
+        gh = Github(GITHUB_TOKEN)
+        repo = gh.get_repo("NiyiOdumosu/kafka-application-owner")
+        all_files = []
+        contents = repo.get_contents("")
+        while contents:
+            file_content = contents.pop(0)
+            if file_content.type == "dir":
+                contents.extend(repo.get_contents(file_content.path))
+            else:
+                file = file_content
+                all_files.append(str(file).replace('ContentFile(path="','').replace('")',''))
+
+        with open('application_owners.csv', 'a') as file:
+            file.writelines(f"{ba_id}, \"{application_owners}\"\n")
+
+        with open('application_owners.csv', 'r') as f:
+            content = f.read()
+
+        git_file = 'application_owners.csv'
+        if git_file in all_files:
+            contents = repo.get_contents(git_file)
+            repo.update_file(contents.path, "Added new application owner", content, contents.sha,  branch="main")
+            logger.info(f'Updated application owner to {git_file}')
+        else:
+            repo.create_file(git_file, "committing files", content,  branch="main")
+            logger.info(f'Created {git_file}')
+
+    else:
+        logger.error(f"The ba.id added does not exist in ServiceNow")
 
 
 def delete_acl(acl):
